@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Leaderboard</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        body { margin: 0; padding: 20px; background-color: #12121f; color: white; font-family: 'Roboto', sans-serif; }
+        .header { display: flex; align-items: center; margin-bottom: 25px; }
+        .header h1 { margin: 0 0 0 15px; font-size: 24px; }
+        .back-button { background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
+        .leaderboard-list { list-style: none; padding: 0; margin: 0; }
+        .list-item { display: flex; align-items: center; background-color: #1e1e3f; padding: 10px 15px; border-radius: 12px; margin-bottom: 10px; }
+        .rank { font-size: 16px; font-weight: bold; min-width: 35px; color: #aaa; }
+        .profile-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 15px; object-fit: cover; background-color: #333; }
+        .user-info { flex-grow: 1; }
+        .user-info .name { font-weight: 500; font-size: 16px; }
+        .user-info .points { font-size: 14px; color: #aaa; margin-top: 2px; }
+        .profile-link { text-decoration: none; color: inherit; display: contents; }
+        #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button onclick="window.history.back()" class="back-button">&larr;</button>
+        <h1>🏆 Leaderboard</h1>
+    </div>
+    <ul id="leaderboardList" class="leaderboard-list"></ul>
+    <div id="loading">Loading...</div>
+
+    <script>
+        window.addEventListener('load', () => {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            document.body.style.backgroundColor = tg.themeParams.bg_color || '#12121f';
+            fetchLeaderboard();
+        });
+
+        async function fetchLeaderboard() {
+            const listElement = document.getElementById('leaderboardList');
+            const loadingElement = document.getElementById('loading');
+            try {
+                const response = await fetch('/api/leaderboard');
+                const leaderboardData = await response.json();
+                
+                loadingElement.style.display = 'none';
+
+                if (leaderboardData.length === 0) {
+                    listElement.innerHTML = '<p style="text-align: center; color: #aaa;">Leaderboard is empty.</p>';
+                    return;
+                }
+
+                leaderboardData.forEach((user, index) => {
+                    const rank = index + 1;
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-item';
+                    
+                    listItem.innerHTML = `
+                        <a href="tg://user?id=${user.id}" class="profile-link">
+                            <div class="rank">#${rank}</div>
+                            <img src="${user.photo_url || ''}" class="profile-pic" onerror="this.style.backgroundColor='#444'; this.src='';">
+                            <div class="user-info">
+                                <div class="name">${escapeHTML(user.first_name)}</div>
+                                <div class="points">${user.points} Points</div>
+                            </div>
+                        </a>
+                    `;
+                    listElement.appendChild(listItem);
+                });
+            } catch (error) {
+                loadingElement.innerText = 'Failed to load leaderboard.';
+                console.error('Error fetching leaderboard:', error);
+            }
+        }
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(str || ''));
+            return p.innerHTML;
+        }
+    </script>
+</body>
+</html>
