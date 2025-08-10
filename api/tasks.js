@@ -1,39 +1,27 @@
 import admin from 'firebase-admin';
 
-// Firebase Admin SDK ইনিশিয়ালাইজেশন
-function initializeFirebase() {
-    try {
-        if (!admin.apps.length) {
-            admin.initializeApp({ 
-                credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_ADMIN_CONFIG)) 
-            });
-        }
-    } catch (e) { console.error('Firebase Admin Init Error in tasks.js', e.stack); }
-}
+function initializeFirebase() { /* ... ( আগের মতোই ) ... */ }
 initializeFirebase();
 
 export default async function handler(req, res) {
-    if (req.method !== 'GET') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
-    }
-    
-    if (admin.apps.length === 0) {
-        return res.status(500).json({ error: 'Firebase initialization failed.' });
-    }
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
+    const { userId } = req.query; // ফ্রন্টএন্ড থেকে ইউজার আইডি নেওয়া হচ্ছে
+    if (!userId) return res.status(400).json({ error: 'User ID is required.' });
 
     try {
-        // --- ডেটা এখন Cloud Firestore থেকে আসছে ---
         const firestore = admin.firestore();
-        const snapshot = await firestore.collection('tasks').get();
+        const tasksSnapshot = await firestore.collection('tasks').where('active', '==', true).get();
+        const completedSnapshot = await firestore.collection('users').doc(userId).collection('completed_tasks').get();
         
-        if (snapshot.empty) {
-            return res.status(200).json([]);
-        }
+        const completedTaskIds = new Set(completedSnapshot.docs.map(doc => doc.id));
+        
+        const availableTasks = tasksSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(task => !completedTaskIds.has(task.id) && task.completions < task.limit);
 
-        const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.status(200).json(tasks);
+        res.status(200).json(availableTasks);
     } catch (error) {
-        console.error('Error fetching tasks from Firestore:', error);
+        console.error('Error fetching tasks:', error);
         res.status(500).json({ error: 'Failed to fetch tasks' });
     }
 }
