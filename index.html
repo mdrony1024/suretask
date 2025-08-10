@@ -2,151 +2,63 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase এর দুটি SDK যোগ করা হলো -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        :root { --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --accent-color: #5856d6; --gold: #ffc700; --silver: #c0c0c0; --bronze: #cd7f32; }
-        body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: #6b7280; --border-color: #e5e7eb; }
-        body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: #9ca3af; --border-color: #4b5563; }
-        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); }
-        a { text-decoration: none; color: inherit; }
-        .view { padding: 0 20px 100px 20px; }
-        .hidden { display: none; }
-        .header { padding: 15px 20px; background: var(--header-bg); border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; display: flex; justify-content: flex-end; align-items: center; }
-        .theme-toggle-button { background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .main-content { display: flex; flex-direction: column; align-items: center; }
-        .profile-section { text-align: center; margin-top: -40px; z-index: 10; width: 100%; max-width: 400px; }
-        .profile-pic { width: 90px; height: 90px; border-radius: 50%; border: 4px solid var(--bg-color); background-color: #ccc; object-fit: cover; }
-        .username { margin: 10px 0 5px; font-size: 24px; font-weight: 700; }
-        .points-display { display: inline-block; background: linear-gradient(90deg, #8e44ad, #3498db); color: white; padding: 8px 30px; border-radius: 20px; font-size: 16px; font-weight: 500; }
-        .leaderboard-button { width: 100%; padding: 15px; background-color: var(--card-bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .footer { display: flex; justify-content: space-around; width: 100%; background-color: var(--card-bg-color); padding: 10px 0; position: fixed; bottom: 0; border-top: 1px solid var(--border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 28px; color: var(--secondary-text-color); cursor: pointer; flex-grow: 1; padding: 5px 0; }
-        .nav-item span { font-size: 12px; margin-top: 2px; }
-        .nav-item.active { color: var(--accent-color); }
-        
-        /* Leaderboard CSS */
-        .leaderboard-header { display: flex; align-items: center; margin-bottom: 25px; }
-        .leaderboard-header .title { font-size: 22px; font-weight: 600; margin-left: 15px; }
-        .back-button { background: none; border: none; color: var(--text-color); font-size: 28px; cursor: pointer; }
-        #leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
-        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        /* ... বাকি লিডারবোর্ডের CSS একই থাকবে ... */
+        /* আপনার পছন্দের "Softcity" ডিজাইন এখানে থাকবে */
     </style>
 </head>
 <body class="light">
-    
-    <header class="header"><button id="theme-toggle" class="theme-toggle-button"><i class='bx bxs-moon'></i></button></header>
-    
-    <main>
-        <div id="home-view" class="view">
-             <div class="main-content">
-                <div class="profile-section">
-                    <img id="profilePic" src="" alt="" class="profile-pic">
-                    <h1 id="username">Loading...</h1>
-                    <div class="points-display"><span id="points">0 Points</span></div>
-                    <button id="go-to-leaderboard-btn" class="leaderboard-button"><i class='bx bxs-trophy'></i> Go to Leaderboard</button>
-                </div>
-            </div>
-        </div>
-        <div id="leaderboard-view" class="view hidden">
-            <!-- ... লিডারবোর্ডের HTML ... -->
-        </div>
-    </main>
+    <div id="app-container"></div>
+    <nav id="bottom-nav" class="bottom-nav"></nav>
 
-    <footer class="footer">
-        <!-- ... ফুটারের HTML ... -->
-    </footer>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Firebase & Telegram Setup ---
+    const firebaseConfig = {
+        apiKey: "{{process.env.PUBLIC_FIREBASE_API_KEY}}",
+        authDomain: "{{process.env.PUBLIC_FIREBASE_AUTH_DOMAIN}}",
+        databaseURL: "{{process.env.PUBLIC_FIREBASE_DATABASE_URL}}", // Realtime DB
+        projectId: "{{process.env.PUBLIC_FIREBASE_PROJECT_ID}}",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const rtdb = firebase.database(); // Realtime Database এর রেফারেন্স
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-        
-        // --- Global State ---
-        let db;
-        let tg;
+    let currentUser = {};
+    const userId = tg.initDataUnsafe?.user?.id || 'test_user';
 
-        // --- Main Initialization Function ---
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                initializeApp();
-            } catch (e) {
-                document.getElementById('username').innerText = 'Open in Telegram';
-                console.error("Telegram WebApp not found", e);
-            }
-        });
-        
-        async function initializeApp() {
-            // --- Theme Setup ---
-            const themeToggleButton = document.getElementById('theme-toggle');
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            document.body.className = currentTheme;
-            const themeIcon = themeToggleButton.querySelector('i');
-            if (currentTheme === 'dark') { themeIcon.classList.replace('bxs-moon', 'bxs-sun'); }
-            themeToggleButton.addEventListener('click', () => {
-                let newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
-                document.body.className = newTheme;
-                if (newTheme === 'dark') { themeIcon.classList.replace('bxs-moon', 'bxs-sun'); } 
-                else { themeIcon.classList.replace('bxs-sun', 'bxs-moon'); }
-                localStorage.setItem('theme', newTheme);
-            });
-
-            // --- Firebase Setup ---
-            try {
-                const response = await fetch('/api/config');
-                if (!response.ok) throw new Error('Config fetch failed');
-                const firebaseConfig = await response.json();
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                runUserLogic();
-            } catch (error) {
-                document.getElementById('username').innerText = 'App Load Failed';
-            }
-        }
-
-        function runUserLogic() {
-            if (tg.initDataUnsafe?.user) {
-                const user = tg.initDataUnsafe.user;
-                const profilePic = document.getElementById('profilePic');
-                document.getElementById('username').innerText = user.first_name || 'User';
-                profilePic.src = user.photo_url || '/default-avatar.png';
-                profilePic.onerror = () => { profilePic.src = '/default-avatar.png'; };
-                
-                loadUserPoints(user.id);
-                updateProfileOnServer(user.id, user.first_name, user.photo_url);
+    function initializeApp() {
+        const userRef = rtdb.ref(`users/${userId}`);
+        userRef.on('value', (snapshot) => {
+            const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
+            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
+            if (snapshot.exists()) {
+                currentUser = snapshot.val();
+                const updates = {};
+                if (currentUser.name !== freshName) updates.name = freshName;
+                if (currentUser.profilePhotoUrl !== freshPhotoUrl) updates.profilePhotoUrl = freshPhotoUrl;
+                if (Object.keys(updates).length > 0) userRef.update(updates);
             } else {
-                document.getElementById('username').innerText = 'User data not found';
+                currentUser = { id: String(userId), name: freshName, points: 0, profilePhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
+                userRef.set(currentUser);
             }
-        }
+            renderHomePage(); 
+        });
+    }
+    
+    // ... (renderHomePage, renderLeaderboardPage, এবং renderProfilePic ফাংশনগুলো আগের "Softcity" কোডের মতোই থাকবে) ...
+    // ... শুধু লিডারবোর্ড দেখানোর সময় rtdb.ref('users') ব্যবহার করতে হবে ...
 
-        async function loadUserPoints(userId) {
-            try {
-                const userRef = doc(db, "users", String(userId));
-                const docSnap = await getDoc(userRef);
-                if (docSnap.exists()) {
-                    document.getElementById('points').innerText = `${docSnap.data().points || 0} Points`;
-                }
-            } catch (error) { console.error("Error fetching points:", error); }
-        }
-
-        async function updateProfileOnServer(userId, firstName, photoUrl) {
-            try {
-                await fetch('/api/update-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, firstName, photoUrl })
-                });
-            } catch (error) { console.error('Failed to update profile on server:', error); }
-        }
-        
-        // --- Navigation and other logic for leaderboard can be placed here ---
-        
-    </script>
+    initializeApp();
+});
+</script>
 </body>
 </html>
