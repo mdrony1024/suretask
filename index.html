@@ -6,7 +6,6 @@
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Firebase 8 SDK - Storage SDK যোগ করা হয়েছে -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
@@ -15,7 +14,7 @@
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
-            --accent-color: #5856d6; --gold: #ffc700; --silver: #d1d5db; --bronze: #f09a5d; --success: #22c55e; --danger: #ef4444;
+            --accent-color: #5856d6; --gold: #f59e0b; --silver: #9ca3af; --bronze: #ca8a04; --success: #22c55e; --danger: #ef4444;
         }
         body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: var(--light-secondary-text); --border-color: var(--light-border); }
         body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: var(--dark-secondary-text); --border-color: var(--dark-border); }
@@ -37,14 +36,21 @@
         .action-button { width: 100%; padding: 12px; margin-top: 15px; background-color: var(--accent-color); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; }
         .page-header { display: flex; align-items: center; padding: 15px; }
         .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
-        #leaderboard-list { display: flex; flex-direction: column; gap: 10px; }
-        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; }
-        .leaderboard-pic { width: 50px; height: 50px; margin: 0 15px; border-radius: 50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; background-color:#eee; }
+        /* --- NEW LEADERBOARD STYLES --- */
+        #leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .leaderboard-rank { font-weight: 600; font-size: 16px; width: 40px; text-align: center; color: var(--secondary-text-color); position: relative; }
+        .rank-icon { font-size: 20px; position: absolute; top: -12px; left: -12px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transform: rotate(-15deg); }
+        .leaderboard-item.rank-1 .rank-icon { background-color: var(--gold); color: white; }
+        .leaderboard-item.rank-2 .rank-icon { background-color: var(--silver); color: white; }
+        .leaderboard-item.rank-3 .rank-icon { background-color: var(--bronze); color: white; }
+        .leaderboard-pic { width: 50px; height: 50px; margin: 0 10px; border-radius: 50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; background-color:#eee; }
         .leaderboard-pic img { width:100%; height:100%; object-fit:cover; }
-        .leaderboard-info { flex-grow: 1; min-width:0; }
+        .leaderboard-info { flex-grow: 1; min-width: 0; }
         .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
-        .leaderboard-info .points { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
-        .leaderboard-refs { display:flex; align-items:center; gap:5px; color: var(--secondary-text-color); font-size:14px; }
+        .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
+        .leaderboard-stats .points, .leaderboard-stats .referrals { font-size: 13px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
+        .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
         /* Profile Page Styles */
         #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
         .form-group { margin-top: 15px; text-align: left; }
@@ -72,8 +78,6 @@
         <div id="nav-referral" class="nav-item"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
         <div id="nav-profile" class="nav-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
-
-    <!-- Hidden file input for uploads -->
     <input type="file" id="photo-upload-input" class="hidden" accept="image/*">
 
 <script>
@@ -99,9 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setupTheme();
             setupNavigation();
             runUserLogic();
-        } catch (error) {
-            document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`;
-        }
+        } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
 
     function runUserLogic() {
@@ -109,17 +111,18 @@ document.addEventListener('DOMContentLoaded', () => {
         userRef.on('value', (snapshot) => {
             const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
             const freshUsername = tg.initDataUnsafe?.user?.username || null;
+            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
             
             if (snapshot.exists()) {
                 currentUser = snapshot.val();
                 const updates = {};
-                // We only update the TG name if there's no custom name set
                 if (!currentUser.customName && currentUser.name !== freshName) updates.name = freshName;
                 if (currentUser.username !== freshUsername) updates.username = freshUsername;
+                if (!currentUser.initialPhotoUrl && freshPhotoUrl) updates.initialPhotoUrl = freshPhotoUrl;
                 if (Object.keys(updates).length > 0) userRef.update(updates);
             } else {
                 const referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode: referralCode, createdAt: new Date().toISOString() };
+                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
                 userRef.set(currentUser);
             }
             const activeNav = document.querySelector('.nav-item.active');
@@ -176,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>`;
         
-        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl);
+        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
         document.getElementById('leaderboard-btn').addEventListener('click', () => renderView('leaderboard'));
         
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
@@ -191,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderLeaderboardPage(container) {
         container.innerHTML = `
-            <div class="leaderboard-header">
+            <div class="page-header">
                 <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Leaderboard</h1>
             </div>
@@ -214,7 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = `leaderboard-item rank-${rank}`;
                 const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
                 let rankDisplay = `#${rank}`;
-                if (rank <= 3) { rankDisplay = `<i class='bx bxs-crown rank-icon'></i>`; }
+                if(rank <= 3) {
+                    const iconClass = rank === 1 ? 'bxs-crown' : (rank === 2 ? 'bxs-shield-alt-2' : 'bxs-star');
+                    rankDisplay = `<div class="rank-icon"><i class='bx ${iconClass}'></i></div>`;
+                }
 
                 item.innerHTML = `
                     <div class="leaderboard-rank">${rankDisplay}</div>
@@ -222,12 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div id="leaderboard-pic-${user.id}" class="leaderboard-pic"></div>
                         <div class="leaderboard-info">
                             <div class="name">${user.customName || user.name || 'User'}</div>
-                            <div class="points">${user.points || 0} Points</div>
+                            <div class="leaderboard-stats">
+                                <div class="points">${user.points || 0} Points</div>
+                                <div class="referrals"><i class='bx bxs-user-plus'></i><span>${user.referrals || 0}</span></div>
+                            </div>
                         </div>
-                        <div class="leaderboard-refs"><i class='bx bxs-user-plus'></i><span>${user.referrals || 0}</span></div>
                     </a>`;
                 list.appendChild(item);
-                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl);
+                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl || user.initialPhotoUrl);
             });
         });
     }
@@ -242,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div></div>`;
         
         document.getElementById('share-link-btn').addEventListener('click', () => {
-            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=Join%20SureTask!`);
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=Join%20SureTask%20and%20earn%20rewards!`);
         });
     }
 
@@ -261,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p id="profile-status" class="status-message"></p>
             </div></div>`;
         
-        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl);
+        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
         
         document.getElementById('profile-pic-upload').addEventListener('click', () => {
             document.getElementById('photo-upload-input').click();
@@ -275,35 +283,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) return;
         const statusEl = document.getElementById('profile-status');
-        statusEl.textContent = 'Uploading...';
-        statusEl.className = 'status-message';
+        statusEl.textContent = 'Uploading...'; statusEl.className = 'status-message';
         
         const storageRef = storage.ref(`profile_pictures/${userId}`);
         storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(downloadURL => {
             db.ref(`users/${userId}/profilePhotoUrl`).set(downloadURL);
-            statusEl.textContent = 'Photo updated successfully!';
-            statusEl.classList.add('status-success');
+            statusEl.textContent = 'Photo updated!'; statusEl.className = 'status-message status-success';
         }).catch(error => {
-            statusEl.textContent = 'Upload failed. Please try again.';
-            statusEl.classList.add('status-error');
+            statusEl.textContent = 'Upload failed.'; statusEl.className = 'status-message status-error';
         });
     }
     
     function saveProfileChanges() {
         const newName = document.getElementById('username-input').value.trim();
         const statusEl = document.getElementById('profile-status');
-        if (!newName) {
-            statusEl.textContent = 'Name cannot be empty.';
-            statusEl.classList.add('status-error');
-            return;
-        }
+        if (!newName) { statusEl.textContent = 'Name cannot be empty.'; statusEl.className = 'status-message status-error'; return; }
         statusEl.textContent = 'Saving...';
         db.ref(`users/${userId}/customName`).set(newName).then(() => {
-            statusEl.textContent = 'Profile saved successfully!';
-            statusEl.classList.add('status-success');
+            statusEl.textContent = 'Profile saved!'; statusEl.className = 'status-message status-success';
         }).catch(error => {
-            statusEl.textContent = 'Failed to save profile.';
-            statusEl.classList.add('status-error');
+            statusEl.textContent = 'Failed to save.'; statusEl.className = 'status-message status-error';
         });
     }
 
