@@ -44,10 +44,10 @@ export default async function handler(req, res) {
             // =======================================================
             const APP_URL = "https://suretask.vercel.app"; 
             
-            const welcomeText = `Hi *${from.first_name}*,\n\nWelcome to SureTask! (Direct Link Test)`;
+            const welcomeText = `Hi *${from.first_name}*,\n\nWelcome to SureTask!`;
             const replyMarkup = { 
                 inline_keyboard: [[{ 
-                    text: '🚀 Open App (Final Try)', 
+                    text: '🫆 Open App', 
                     web_app: { url: APP_URL } // এখানে সরাসরি URL ব্যবহার করা হচ্ছে
                 }]] 
             };
