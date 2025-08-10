@@ -4,212 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>SureTask Home</title>
-    <!-- টেলিগ্রাম মিনি অ্যাপের জন্য স্ক্রিপ্ট -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- নতুন আইকনের জন্য Boxicons CDN -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-
     <style>
-        /* CSS ভ্যারিয়েবলস (থিমের জন্য) */
-        :root {
-            --bg-color: #f0f2f5;
-            --secondary-bg: #ffffff;
-            --text-color: #050505;
-            --secondary-text-color: #65676b;
-            --header-bg: #4a00e0;
-            --button-bg: #e4e6eb;
-        }
-
-        body.dark-mode {
-            --bg-color: #12121f;
-            --secondary-bg: #1e1e3f;
-            --text-color: #ffffff;
-            --secondary-text-color: #aaa;
-            --header-bg: #5534a5;
-            --button-bg: #2c2c54;
-        }
+        /* CSS ভ্যারিয়েবলস এবং বেসিক স্টাইল */
+        :root { --bg-color: #f0f2f5; --secondary-bg: #ffffff; --text-color: #050505; --secondary-text-color: #65676b; --header-bg: #4a00e0; --button-bg: #e4e6eb; --accent-color: #5856d6; }
+        body.dark-mode { --bg-color: #12121f; --secondary-bg: #1e1e3f; --text-color: #ffffff; --secondary-text-color: #aaa; --header-bg: #5534a5; --button-bg: #2c2c54; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        body { margin: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Poppins', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        a { text-decoration: none; color: inherit; }
         
-        /* বেসিক স্টাইল */
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-        body { 
-            margin: 0; 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            font-family: 'Roboto', sans-serif;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        
+        /* কন্টেইনার এবং হেডার */
         .container { display: flex; flex-direction: column; min-height: 100vh; }
+        .header { padding: 15px 20px; background: var(--header-bg); border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; display: flex; justify-content: flex-end; align-items: center; }
+        .theme-toggle-button { background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         
-        /* হেডার এবং থিম টগল বাটন */
-        .header { 
-            padding: 15px 20px; 
-            background: var(--header-bg);
-            border-bottom-left-radius: 25px; 
-            border-bottom-right-radius: 25px; 
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-        .theme-toggle-button {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            font-size: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-
+        /* প্রধান কন্টেন্ট */
         .main { flex: 1; padding: 0 20px; display: flex; flex-direction: column; align-items: center; }
-        
-        /* প্রোফাইল সেকশন */
-        .profile-section { text-align: center; margin-top: -40px; z-index: 10; }
+        .profile-section { text-align: center; margin-top: -40px; z-index: 10; width: 100%; max-width: 400px; }
         .profile-pic { width: 90px; height: 90px; border-radius: 50%; border: 4px solid var(--bg-color); background-color: #ccc; object-fit: cover; }
         .username { margin: 10px 0 5px; font-size: 24px; font-weight: 700; }
         .points-display { display: inline-block; background: linear-gradient(90deg, #8e44ad, #3498db); color: white; padding: 8px 30px; border-radius: 20px; font-size: 16px; font-weight: 500; }
-        
-        /* আপাতত লুকানো সেকশন */
-        .stats-section, .notice-section {
-            display: none;
-        }
-
-        /* লিডারবোর্ড বাটন */
-        .leaderboard-button { 
-            width: 100%; 
-            padding: 15px; 
-            background-color: var(--button-bg); 
-            color: var(--text-color);
-            border: none; 
-            border-radius: 12px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
+        .leaderboard-button { width: 100%; padding: 15px; background-color: var(--button-bg); color: var(--text-color); border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 30px; }
         
         /* ফুটার ন্যাভিগেশন */
-        .footer { 
-            display: flex; 
-            justify-content: space-around; 
-            width: 100%; 
-            background-color: var(--secondary-bg); 
-            padding: 10px 0; 
-            position: sticky; 
-            bottom: 0; 
-            border-top: 1px solid rgba(128, 128, 128, 0.2);
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        }
-        .nav-item { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            font-size: 28px; 
-            color: var(--secondary-text-color); 
-            cursor: pointer; 
-            flex-grow: 1;
-            padding: 5px 0;
-        }
+        .footer { display: flex; justify-content: space-around; width: 100%; background-color: var(--secondary-bg); padding: 10px 0; position: sticky; bottom: 0; border-top: 1px solid rgba(128, 128, 128, 0.2); box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 28px; color: var(--secondary-text-color); cursor: pointer; flex-grow: 1; padding: 5px 0; }
         .nav-item span { font-size: 12px; margin-top: 2px; }
-        .nav-item.active { color: #4a00e0; }
+        .nav-item.active { color: var(--accent-color); }
         body.dark-mode .nav-item.active { color: #a78bfa; }
+
+        /* পপ-আপের জন্য নতুন CSS */
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .popup-overlay.show { opacity: 1; pointer-events: auto; }
+        .popup-box { background: var(--secondary-bg); padding: 25px; border-radius: 15px; width: 90%; max-width: 320px; text-align: center; transform: scale(0.9); transition: transform 0.3s; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .popup-overlay.show .popup-box { transform: scale(1); }
+        .popup-box h3 { margin-top: 0; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .popup-box p { color: var(--secondary-text-color); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+        .popup-box .popup-button { width: 100%; padding: 12px; background: var(--accent-color); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 500; }
     </style>
 </head>
 <body>
+    <!-- সতর্কীকরণ পপ-আপের জন্য নতুন HTML -->
+    <div id="welcome-popup" class="popup-overlay">
+        <div class="popup-box">
+            <h3><i class='bx bxs-error-alt'></i> Important Notice</h3>
+            <p>Please do not use any third-party scripts or bots. Your account may be banned for suspicious activity. Play fair!</p>
+            <button id="close-popup-btn" class="popup-button">I Understand</button>
+        </div>
+    </div>
+
     <div class="container">
-        <header class="header">
-            <button id="theme-toggle" class="theme-toggle-button">
-                <i class='bx bxs-moon'></i>
-            </button>
-        </header>
+        <header class="header"><button id="theme-toggle" class="theme-toggle-button"><i class='bx bxs-moon'></i></button></header>
         <main class="main">
             <div class="profile-section">
                 <img id="profilePic" src="" alt="" class="profile-pic">
                 <h1 id="username" class="username">Loading...</h1>
                 <div class="points-display"><span id="points">0 Points</span></div>
-            </div>
-
-            <!-- Leaderboard Button -->
-            <a href="/leaderboard.html" style="text-decoration: none; width: 100%; max-width: 400px; margin-top: 30px;">
-                <button class="leaderboard-button"><i class='bx bxs-trophy'></i> Go to Leaderboard</button>
-            </a>
-
-            <!-- এই সেকশনগুলো এখন লুকানো আছে -->
-            <div class="stats-section" style="display: none;">
-                <div class="stat-item"><span>Today's</span><strong>0</strong></div>
-                <div class="stat-item"><span>Total A</span><strong>0</strong></div>
-                <div class="stat-item"><span>Referrals</span><strong>0</strong></div>
-            </div>
-            <div class="notice-section" style="display: none;">
-                <h4>📢 Notice</h4>
-                <p>Welcome</p>
+                <a href="/leaderboard.html"><button class="leaderboard-button"><i class='bx bxs-trophy'></i> Go to Leaderboard</button></a>
             </div>
         </main>
-
         <footer class="footer">
-            <a href="/index.html" style="text-decoration: none; color: inherit; flex-grow: 1; text-align: center;">
-                 <div class="nav-item active">
-                    <i class='bx bxs-home'></i>
-                    <span>Home</span>
-                </div>
-            </a>
-            <a href="/tasks.html" style="text-decoration: none; color: inherit; flex-grow: 1; text-align: center;">
-                <div class="nav-item">
-                    <i class='bx bx-list-check'></i>
-                    <span>Tasks</span>
-                </div>
-            </a>
-            <!-- Shop, Bonus, Withdraw আপাতত সরানো হয়েছে -->
+            <a href="/index.html"><div class="nav-item active"><i class='bx bxs-home-alt-2'></i><span>Home</span></div></a>
+            <a href="/tasks.html"><div class="nav-item"><i class='bx bx-list-check'></i><span>Tasks</span></div></a>
+            <a href="/profile.html"><div class="nav-item"><i class='bx bxs-user-circle'></i><span>Profile</span></div></a>
         </footer>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-
+        
         // --- থিম টগলারের জন্য কোড ---
         const themeToggleButton = document.getElementById('theme-toggle');
-        const currentTheme = localStorage.getItem('theme');
+        const currentTheme = localStorage.getItem('theme') || 'light';
         const themeIcon = themeToggleButton.querySelector('i');
-
-        if (currentTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeIcon.classList.replace('bxs-moon', 'bxs-sun');
-        }
-
+        document.body.className = currentTheme;
+        if (currentTheme === 'dark') { themeIcon.classList.replace('bxs-moon', 'bxs-sun'); }
         themeToggleButton.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            let theme = 'light';
-            if (document.body.classList.contains('dark-mode')) {
-                theme = 'dark';
-                themeIcon.classList.replace('bxs-moon', 'bxs-sun');
-            } else {
-                themeIcon.classList.replace('bxs-sun', 'bxs-moon');
-            }
-            localStorage.setItem('theme', theme);
+            let newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
+            document.body.className = newTheme;
+            if (newTheme === 'dark') { themeIcon.classList.replace('bxs-moon', 'bxs-sun'); } 
+            else { themeIcon.classList.replace('bxs-sun', 'bxs-moon'); }
+            localStorage.setItem('theme', newTheme);
         });
-        
+
         // --- মূল অ্যাপের লজিক ---
         async function initializeAndRunApp() {
             try {
                 const response = await fetch('/api/config');
-                if (!response.ok) throw new Error('Failed to fetch Firebase config');
+                if (!response.ok) throw new Error('Config fetch failed');
                 const firebaseConfig = await response.json();
-
                 const app = initializeApp(firebaseConfig);
                 const db = getFirestore(app);
-
                 runTelegramLogic(db);
             } catch (error) {
-                console.error("Initialization Failed:", error);
-                document.getElementById('username').innerText = 'App Failed to Load';
+                document.getElementById('username').innerText = 'App Load Failed';
             }
         }
 
@@ -218,22 +108,15 @@
                 const tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
-                
-                // অ্যাপের ব্যাকগ্রাউন্ড টেলিগ্রাম থিমের সাথে মেলানো
-                document.body.style.backgroundColor = tg.themeParams.bg_color;
-
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                if (tg.initDataUnsafe?.user) {
                     const user = tg.initDataUnsafe.user;
                     document.getElementById('username').innerText = user.first_name || 'User';
-                    if (user.photo_url) document.getElementById('profilePic').src = user.photo_url;
                     loadUserDataFromFirebase(db, user.id);
                 } else {
-                    document.getElementById('username').innerText = 'Please open in Telegram';
+                    document.getElementById('username').innerText = 'Open in Telegram';
                 }
             } catch (e) {
-                console.error('Telegram WebApp is not available.', e);
-                // ব্রাউজারে টেস্ট করার জন্য
-                document.getElementById('username').innerText = 'Please open in Telegram';
+                document.getElementById('username').innerText = 'Open in Telegram';
             }
         }
 
@@ -241,17 +124,34 @@
             try {
                 const userRef = doc(db, "users", String(userId));
                 const docSnap = await getDoc(userRef);
+                const profilePic = document.getElementById('profilePic');
                 if (docSnap.exists()) {
-                    document.getElementById('points').innerText = `${docSnap.data().points || 0} Points`;
-                } else {
-                    document.getElementById('points').innerText = `0 Points`;
+                    const userData = docSnap.data();
+                    document.getElementById('points').innerText = `${userData.points || 0} Points`;
+                    // কাস্টম ছবি থাকলে সেটি দেখানো হবে, না থাকলে টেলিগ্রামের ছবি
+                    const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+                    profilePic.src = userData.customPhotoUrl || tgUser?.photo_url || '/default-avatar.png';
                 }
-            } catch (error) {
-                console.error("Error fetching user data:", error);
+                 profilePic.onerror = () => { profilePic.src = '/default-avatar.png'; };
+            } catch (error) { console.error("Error fetching user data:", error); }
+        }
+        
+        // পপ-আপ দেখানোর ফাংশন
+        function showWelcomePopup() {
+            const popupShown = sessionStorage.getItem('welcomePopupShown'); // sessionStorage ব্যবহার করা হলো যাতে প্রতি সেশনে একবার দেখায়
+            if (!popupShown) {
+                document.getElementById('welcome-popup').classList.add('show');
+                document.getElementById('close-popup-btn').addEventListener('click', () => {
+                    document.getElementById('welcome-popup').classList.remove('show');
+                    sessionStorage.setItem('welcomePopupShown', 'true');
+                });
             }
         }
         
-        window.addEventListener('load', initializeAndRunApp);
+        window.addEventListener('load', () => {
+            initializeAndRunApp();
+            showWelcomePopup();
+        });
     </script>
 </body>
 </html>
