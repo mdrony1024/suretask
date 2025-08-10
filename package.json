@@ -1,14 +1,8 @@
 {
-  "name": "suretask-bot",
+  "name": "suretask-hybrid",
   "version": "1.0.0",
-  "description": "A Telegram mini app built with Vercel and Firebase.",
-  "main": "index.html",
-  "scripts": {
-    "start": "echo 'Static deployment'"
-  },
+  "description": "Hybrid Database Telegram mini app",
   "dependencies": {
     "firebase-admin": "^11.11.1"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }
