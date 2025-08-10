@@ -5,214 +5,225 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --accent-color: #5856d6; --gold: #ffc700; --silver: #c0c0c0; --bronze: #cd7f32; }
-        body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: #6b7280; --border-color: #e5e7eb; }
-        body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: #9ca3af; --border-color: #4b5563; }
-        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
-        a { text-decoration: none; color: inherit; }
-        .hidden { display: none !important; }
-        .view { padding: 0 15px; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        :root {
+            --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
+            --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
+            --accent-color: #5856d6; --gold: #ffc700; --silver: #d1d5db; --bronze: #f09a5d;
+        }
+        body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: var(--light-secondary-text); --border-color: var(--light-border); }
+        body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: var(--dark-secondary-text); --border-color: var(--dark-border); }
+        body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px 20px 80px 20px; background-color: var(--bg-color); color: var(--text-color); }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
-        .header-bg { background: linear-gradient(90deg, #7f52ff, #d152ff); height: 120px; border-radius: 0 0 30px 30px; position: fixed; top: 0; left: 0; right: 0; z-index: -1; }
-        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; color: white; }
-        .top-header .title { font-size: 20px; font-weight: 600; }
-        #theme-toggle { background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+        /* Home View */
+        .profile-card { text-align: center; margin-bottom: 20px; }
+        .profile-pic { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 10px; border: 4px solid var(--bg-color); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background-color: #ccc; }
+        .username { font-size: 22px; font-weight: 600; }
+        .points-display { display: inline-block; background: linear-gradient(90deg, #4c66ee, #5c3ce0); color: white; padding: 8px 30px; border-radius: 20px; font-size: 16px; font-weight: 500; margin-top: 5px; }
+        .welcome-card { background: var(--card-bg-color); padding: 20px; border-radius: 15px; text-align: center; margin-top: 20px; }
+        .welcome-card h2 { margin: 0 0 5px 0; font-size: 20px; }
+        .welcome-card p { color: var(--secondary-text-color); margin: 0 0 20px 0; }
+        .join-channel-btn { width: 100%; padding: 15px; background: #2f80ed; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
         
-        .profile-card { background: var(--card-bg-color); border-radius: 20px; padding: 20px; text-align: center; margin-top: 50px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
-        .profile-pic, .leaderboard-pic { width: 80px; height: 80px; border-radius: 50%; margin: -60px auto 10px; border: 4px solid var(--card-bg-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #eee; }
-        .profile-pic img, .leaderboard-pic img { width: 100%; height: 100%; object-fit: cover; }
-        .profile-pic span { font-size: 32px; font-weight: bold; color: var(--accent-color); }
-        .username { font-size: 20px; font-weight: 600; }
-        .points { background-color: var(--accent-color); color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; font-size: 14px; margin-top: 5px; }
-        .action-button { width: 100%; padding: 12px; margin-top: 15px; background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; }
-        .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
+        /* Leaderboard View */
+        .page-header { display: flex; align-items: center; margin-bottom: 25px; }
+        .page-header .title { font-size: 22px; font-weight: 600; }
+        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 12px; }
+        .leaderboard-rank { font-weight: 600; font-size: 16px; width: 40px; text-align: center; color: var(--secondary-text-color); }
+        .rank-icon { font-size: 24px; display: block; }
+        .leaderboard-item.rank-1 .rank-icon { color: var(--gold); }
+        .leaderboard-item.rank-2 .rank-icon { color: var(--silver); }
+        .leaderboard-item.rank-3 .rank-icon { color: var(--bronze); }
+        .leaderboard-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; font-size: 24px; border: 2px solid rgba(128,128,128,0.1); }
+        .leaderboard-info { flex-grow: 1; min-width: 0; }
+        .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .leaderboard-info .points { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
+        .leaderboard-refs { text-align: right; color: var(--secondary-text-color); font-size: 14px; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+        .list-item-link { text-decoration: none; color: inherit; display: contents; }
+        .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
+        
+        /* Bottom Navigation */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); }
+        .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-grow: 1; }
+        .nav-item .icon { font-size: 24px; }
         .nav-item.active { color: var(--accent-color); }
-        .nav-item i { font-size: 24px; }
-        
-        /* Leaderboard Styles */
-        .leaderboard-header { display: flex; align-items: center; padding: 15px; }
-        .leaderboard-header .title { font-size: 20px; font-weight: 600; margin-left: 10px; }
-        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); }
-        #leaderboard-list { display: flex; flex-direction: column; gap: 10px; }
-        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; }
-        .leaderboard-pic { width: 50px; height: 50px; margin: 0 15px; }
-        .leaderboard-info .name { font-weight: 600; font-size: 16px; }
-        .leaderboard-info .points { font-size: 14px; color: var(--accent-color); }
     </style>
 </head>
-<body class="light">
-    
-    <div id="app-container">
-        <!-- Content will be rendered here by JavaScript -->
+<body>
+
+    <div id="home-view" class="view active">
+        <div class="profile-card">
+            <img id="profilePic" class="profile-pic" src="" alt="">
+            <h1 id="username" class="username">Loading...</h1>
+            <div id="points" class="points-display">0 Points</div>
+        </div>
+        <div class="welcome-card">
+            <h2 id="welcome-name">Welcome!</h2>
+            <p>Complete tasks, invite friends, and earn points.</p>
+            <button id="join-channel-btn" class="join-channel-btn"><i class='bx bxl-telegram'></i> Join Channel</button>
+        </div>
     </div>
+
+    <div id="leaderboard-view" class="view">
+        <div class="page-header"><h1 class="title">🏆 Leaderboard</h1></div>
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-loading" style="text-align: center; margin-top: 50px;">Loading...</div>
+    </div>
+
+    <!-- টাস্ক, বোনাস ইত্যাদির জন্য future views এখানে যোগ করা যাবে -->
+    <div id="tasks-view" class="view"><div class="page-header"><h1 class="title">📋 Tasks</h1></div><p>Tasks will be available soon.</p></div>
+    <div id="bonus-view" class="view"><div class="page-header"><h1 class="title">🎁 Bonus</h1></div><p>Bonus section is coming soon.</p></div>
+    <div id="withdraw-view" class="view"><div class="page-header"><h1 class="title">💸 Withdraw</h1></div><p>Withdrawal options will be here.</p></div>
+    <div id="history-view" class="view"><div class="page-header"><h1 class="title">📜 History</h1></div><p>Your transaction history will appear here.</p></div>
+    <div id="referral-view" class="view"><div class="page-header"><h1 class="title">👥 Referral</h1></div><p>Refer your friends and earn.</p></div>
     
     <nav class="bottom-nav">
-        <div id="nav-home" class="nav-item active"><i class='bx bxs-home'></i><span>Home</span></div>
-        <a href="/tasks.html" style="text-decoration:none; color:inherit; flex-basis: 0; flex-grow: 1;"><div class="nav-item"><i class='bx bx-list-check'></i><span>Tasks</span></div></a>
+        <div class="nav-item active" data-view="home-view"><i class='bx bxs-home icon'></i>Home</div>
+        <div class="nav-item" data-view="tasks-view"><i class='bx bxs-server icon'></i>Tasks</div>
+        <div class="nav-item" data-view="bonus-view"><i class='bx bxs-gift icon'></i>Bonus</div>
+        <div class="nav-item" data-view="withdraw-view"><i class='bx bxs-wallet icon'></i>Withdraw</div>
+        <div class="nav-item" data-view="history-view"><i class='bx bx-history icon'></i>History</div>
+        <div class="nav-item" data-view="referral-view"><i class='bx bxs-user-plus icon'></i>Referral</div>
     </nav>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    let db, tg, currentUser = {}, userId;
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-    async function initializeApp() {
-        try {
-            const response = await fetch('/api/config');
-            if (!response.ok) throw new Error('Config fetch failed');
-            const firebaseConfig = await response.json();
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            userId = tg.initDataUnsafe?.user?.id || 'test_user';
-            
-            setupTheme();
-            setupNavigation();
-            runUserLogic();
-        } catch (error) {
-            document.getElementById('app-container').innerHTML = '<h1>App Failed to Load</h1>';
-        }
-    }
-
-    function runUserLogic() {
-        const userRef = db.ref(`users/${userId}`);
-        userRef.on('value', (snapshot) => {
-            const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
-            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
-            if (snapshot.exists()) {
-                currentUser = snapshot.val();
-                const updates = {};
-                if (currentUser.name !== freshName) updates.name = freshName;
-                if (currentUser.profilePhotoUrl !== freshPhotoUrl) updates.profilePhotoUrl = freshPhotoUrl;
-                if (Object.keys(updates).length > 0) userRef.update(updates);
-            } else {
-                currentUser = { id: String(userId), name: freshName, points: 0, profilePhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
-                userRef.set(currentUser);
-            }
-            if(document.getElementById('home-view')) renderHomePage();
-        });
-    }
-
-    function setupTheme() {
-        const themeToggle = document.createElement('button');
-        themeToggle.id = 'theme-toggle';
-        document.body.prepend(themeToggle); // Hidden, used for logic
-        
+        // --- Basic Setup ---
         const savedTheme = localStorage.getItem('theme') || 'light';
-        document.body.className = savedTheme;
+        document.body.classList.add(savedTheme);
+        const tg = window.Telegram.WebApp;
 
-        themeToggle.addEventListener('click', () => {
-            let newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
-            document.body.className = newTheme;
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon();
-        });
-    }
-    
-    function updateThemeIcon() {
-        const themeIcon = document.querySelector('#theme-toggle-icon');
-        if (themeIcon) {
-            themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
-        }
-    }
-
-    function setupNavigation() {
-        document.getElementById('nav-home').addEventListener('click', () => renderView('home'));
-        renderView('home'); // Initial view
-    }
-    
-    function renderView(viewName) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        if(viewName === 'home') {
-            document.getElementById('nav-home').classList.add('active');
-            renderHomePage();
-        }
-    }
-
-    function renderHomePage() {
-        const container = document.getElementById('app-container');
-        container.innerHTML = `
-            <div class="header-bg"></div>
-            <div class="top-header">
-                <h1 class="title">SureTask</h1>
-                <button id="theme-toggle-btn" class="action-button" style="width: 40px; height: 40px; padding: 0; border-radius: 50%; margin:0; border: none; background: rgba(255,255,255,0.2); color: white;"><i id="theme-toggle-icon" class='bx bxs-moon'></i></button>
-            </div>
-            <div id="home-view" class="view">
-                <div class="profile-card">
-                    <div id="home-profile-pic" class="profile-pic"></div>
-                    <h2 class="username">${currentUser.name || 'Loading...'}</h2>
-                    <div class="points">${currentUser.points || 0} Points</div>
-                    <button id="leaderboard-btn" class="action-button">🏆 Go to Leaderboard</button>
-                </div>
-            </div>`;
+        // --- Navigation Logic ---
+        const views = document.querySelectorAll('.view');
+        const navItems = document.querySelectorAll('.nav-item');
         
-        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.name, currentUser.profilePhotoUrl);
-        document.getElementById('leaderboard-btn').addEventListener('click', renderLeaderboardPage);
-        document.getElementById('theme-toggle-btn').addEventListener('click', () => document.getElementById('theme-toggle').click());
-        updateThemeIcon();
-    }
-
-    function renderLeaderboardPage() {
-        const container = document.getElementById('app-container');
-        container.innerHTML = `
-            <div class="leaderboard-header">
-                <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
-                <h1 class="title">Leaderboard</h1>
-            </div>
-            <div id="leaderboard-list" class="view">Loading...</div>`;
-        
-        document.getElementById('back-btn').addEventListener('click', renderHomePage);
-
-        db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
-            const list = document.getElementById('leaderboard-list');
-            if (!snapshot.exists()) { list.innerHTML = 'Leaderboard is empty.'; return; }
-            
-            const users = [];
-            snapshot.forEach(child => { users.push(child.val()); });
-            users.reverse(); // Highest points first
-            list.innerHTML = '';
-            
-            users.forEach((user) => {
-                const item = document.createElement('div');
-                item.className = 'leaderboard-item';
-                const picContainer = document.createElement('div');
-                picContainer.className = 'leaderboard-pic';
-                renderProfilePic(picContainer, user.name, user.profilePhotoUrl);
-                
-                const info = document.createElement('div');
-                info.className = 'leaderboard-info';
-                info.innerHTML = `<div class="name">${user.name}</div><div class="points">${user.points || 0} Points</div>`;
-                
-                item.appendChild(picContainer);
-                item.appendChild(info);
-                list.appendChild(item);
+        function navigate(viewId) {
+            views.forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId)?.classList.add('active');
+            navItems.forEach(item => {
+                item.classList.toggle('active', item.dataset.view === viewId);
             });
-        });
-    }
-
-    function renderProfilePic(container, name, photoUrl) {
-        container.innerHTML = '';
-        if (photoUrl) {
-            const img = document.createElement('img');
-            img.src = photoUrl;
-            img.onerror = () => { container.innerHTML = `<span>${(name || '?').charAt(0)}</span>`; };
-            container.appendChild(img);
-        } else {
-            container.innerHTML = `<span>${(name || '?').charAt(0)}</span>`;
+            // লিডারবোর্ড ভিউতে গেলে ডেটা লোড করা
+            if (viewId === 'leaderboard-view') {
+                loadLeaderboard();
+            }
         }
-    }
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', () => navigate(item.dataset.view));
+        });
 
-    initializeApp();
-});
-</script>
+        // --- Channel Join Button ---
+        document.getElementById('join-channel-btn').addEventListener('click', () => {
+            // এই লিঙ্কটি আপনার নিজের টেলিগ্রাম চ্যানেল লিঙ্ক দিয়ে পরিবর্তন করুন
+            tg.openTelegramLink("https://t.me/YourChannelUsername");
+        });
+
+        // --- App Initialization ---
+        async function initializeAndRunApp() {
+            try {
+                const response = await fetch('/api/config');
+                const firebaseConfig = await response.json();
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                runTelegramLogic(db);
+            } catch (error) { console.error("Initialization Failed:", error); }
+        }
+
+        function runTelegramLogic(db) {
+            try {
+                tg.ready();
+                tg.expand();
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    const user = tg.initDataUnsafe.user;
+                    const profilePicEl = document.getElementById('profilePic');
+                    if (user.photo_url) { profilePicEl.src = user.photo_url; } else { profilePicEl.style.display = 'none'; }
+                    document.getElementById('username').innerText = user.first_name || 'User';
+                    document.getElementById('welcome-name').innerText = `Welcome, ${user.first_name}!`;
+                    loadUserDataFromFirebase(db, user.id);
+                } else { document.getElementById('username').innerText = 'Open in Telegram'; }
+            } catch (e) { document.getElementById('username').innerText = 'Open in Telegram'; }
+        }
+
+        async function loadUserDataFromFirebase(db, userId) {
+            try {
+                const userRef = doc(db, "users", String(userId));
+                const docSnap = await getDoc(userRef);
+                if (docSnap.exists()) {
+                    document.getElementById('points').innerText = `${docSnap.data().points || 0} Points`;
+                }
+            } catch (error) { console.error("Error fetching user data:", error); }
+        }
+
+        // --- Leaderboard Logic ---
+        function generateColor(str) {
+            let hash = 0;
+            for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                const value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+        async function loadLeaderboard() {
+            const listContainer = document.getElementById('leaderboard-list');
+            const loadingDiv = document.getElementById('leaderboard-loading');
+            loadingDiv.style.display = 'block';
+            listContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const users = await response.json();
+                loadingDiv.style.display = 'none';
+                if (!users || users.length === 0) { listContainer.innerHTML = '<p style="text-align:center;color:#aaa;">Leaderboard is empty.</p>'; return; }
+
+                users.forEach((user, index) => {
+                    const rank = index + 1;
+                    const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
+                    const userInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
+                    const userColor = generateColor(user.first_name);
+                    let rankDisplay = `#${rank}`;
+                    if (rank <= 3) { rankDisplay = `<i class='bx bxs-crown rank-icon'></i>`; }
+
+                    const item = document.createElement('div');
+                    item.className = `leaderboard-item rank-${rank}`;
+                    item.innerHTML = `
+                        <div class="leaderboard-rank">${rankDisplay}</div>
+                        <a href="${profileLink}" class="list-item-link" target="_blank" style="display:contents;">
+                            <div class="leaderboard-pic" style="background-color: ${userColor};">${userInitial}</div>
+                            <div class="leaderboard-info">
+                                <div class="name">${escapeHTML(user.first_name)}</div>
+                                <div class="points">${user.points || 0} Points</div>
+                            </div>
+                            <div class="leaderboard-refs">
+                                <i class='bx bxs-user-plus'></i>
+                                <span>${user.referrals || 0}</span>
+                            </div>
+                        </a>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            } catch (err) {
+                loadingDiv.innerText = 'Could not load leaderboard.';
+            }
+        }
+
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(str || ''));
+            return p.innerHTML;
+        }
+
+        window.addEventListener('load', initializeAndRunApp);
+    </script>
 </body>
 </html>
