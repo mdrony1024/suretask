@@ -1,0 +1,56 @@
+<!-- এটি একটি বেসিক অ্যাডমিন প্যানেলের উদাহরণ। নিরাপত্তা এবং কার্যকারিতা বাড়ানোর জন্য আরও কোড লাগবে। -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+</head>
+<body>
+    <h1>SureTask Admin Panel</h1>
+    
+    <h3>Settings</h3>
+    <label>Referral Commission (%):</label>
+    <input type="number" id="commission-input" placeholder="e.g., 10">
+    <br>
+    <label>Min Points Per Task:</label>
+    <input type="number" id="min-points-input" placeholder="e.g., 5">
+    <button id="save-settings-btn">Save Settings</button>
+
+    <h3>Users</h3>
+    <div id="users-list"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        
+        // আপনার Firebase কনফিগারেশন এখানে সরাসরি বসাতে পারেন অথবা /api/config থেকে আনতে পারেন
+        const firebaseConfig = { /* ... */ };
+        const app = initializeApp(firebaseConfig);
+        const firestore = getFirestore(app);
+
+        // Load settings
+        const settingsRef = doc(firestore, 'settings', 'app');
+        getDoc(settingsRef).then(doc => {
+            if(doc.exists()) {
+                document.getElementById('commission-input').value = doc.data().referralCommission || 10;
+                document.getElementById('min-points-input').value = doc.data().minPointsPerTask || 5;
+            }
+        });
+
+        // Save settings
+        document.getElementById('save-settings-btn').addEventListener('click', async () => {
+            const commission = parseInt(document.getElementById('commission-input').value);
+            const minPoints = parseInt(document.getElementById('min-points-input').value);
+            await setDoc(settingsRef, { referralCommission: commission, minPointsPerTask: minPoints });
+            alert('Settings Saved!');
+        });
+
+        // Load users
+        const usersListDiv = document.getElementById('users-list');
+        getDocs(collection(firestore, 'users')).then(snapshot => {
+            snapshot.forEach(doc => {
+                usersListDiv.innerHTML += `<p>${doc.data().name}: ${doc.data().points} points</p>`;
+            });
+        });
+    </script>
+</body>
+</html>
