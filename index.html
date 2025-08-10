@@ -7,10 +7,11 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
+        /* --- আপনার দেওয়া সম্পূর্ণ CSS কোড এখানে থাকবে --- */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -21,28 +22,15 @@
         body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
         .view { padding: 0 15px; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .header-bg { background: linear-gradient(90deg, #7f52ff, #d152ff); height: 120px; border-radius: 0 0 30px 30px; position: fixed; top: 0; left: 0; right: 0; z-index: -1; }
-        .top-header, .page-header { display: flex; align-items: center; padding: 15px; color: white; }
-        .page-header { color: var(--text-color); }
-        .top-header .title, .page-header .title { font-size: 20px; font-weight: 600; }
-        #theme-toggle-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; display:flex; align-items:center; justify-content:center; }
-        .profile-card { background: var(--card-bg-color); border-radius: 20px; padding: 20px; text-align: center; margin-top: 50px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
-        .profile-pic { width: 80px; height: 80px; border-radius: 50%; margin: -60px auto 10px; border: 4px solid var(--card-bg-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #eee; position:relative; }
-        .profile-pic img { width: 100%; height: 100%; object-fit: cover; }
-        .action-button { width: 100%; padding: 12px; margin-top: 15px; background-color: var(--accent-color); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; }
-        /* --- TASK LIST STYLES --- */
-        #task-list { display: flex; flex-direction: column; gap: 12px; }
-        .task-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 15px; border-radius: 12px; justify-content: space-between; }
-        .task-info .title { font-weight: 500; font-size: 16px; }
-        .task-info .points { font-size: 14px; color: var(--success); margin-top: 4px; }
-        .task-button { background-color: var(--accent-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .task-button:disabled { background-color: #555; cursor: not-allowed; }
-        /* --- BOTTOM NAV --- */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; border-radius: 20px 20px 0 0; margin: 0 10px; }
-        .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
-        .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; transition: all 0.3s; }
-        .nav-item.active { color: var(--accent-color); }
-        .nav-item.active .icon { background-color: var(--accent-color); color: white; }
+        /* ... (বাকি সব স্টাইল আগের মতোই) ... */
+        /* --- নতুন স্টাইল যোগ করা হয়েছে --- */
+        #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
+        .form-group { margin-top: 15px; text-align: left; }
+        .form-group label { font-weight: 500; font-size: 14px; }
+        .form-group input { width: 100%; padding: 10px; box-sizing: border-box; margin-top: 5px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
+        .status-message { margin-top: 15px; font-weight: 500; }
+        .status-success { color: var(--success); } .status-error { color: var(--danger); }
+        /* ... (বাকি সব স্টাইল আগের মতোই) ... */
     </style>
 </head>
 <body class="light">
@@ -50,168 +38,70 @@
     <div id="app-container"></div>
     
     <nav class="bottom-nav">
-        <div id="nav-home" class="nav-item active"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
-        <div id="nav-tasks" class="nav-item"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
-        <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
-        <div id="nav-referral" class="nav-item"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
-        <div id="nav-profile" class="nav-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
+        <!-- ... (আপনার ন্যাভিগেশন বার আগের মতোই) ... -->
     </nav>
+
     <input type="file" id="photo-upload-input" class="hidden" accept="image/*">
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    let db, storage, tg, currentUser = {}, userId;
+<script type="module">
+    // --- আপনার দেওয়া সম্পূর্ণ জাভাস্ক্রিপ্ট কোড এখানে থাকবে ---
+    // --- এবং এর সাথে নতুন ফিচারগুলোর জন্য অতিরিক্ত কোড যোগ করা হবে ---
 
-    async function initializeApp() {
-        try {
-            const response = await fetch('/api/config');
-            if (!response.ok) throw new Error('Config fetch failed');
-            const firebaseConfig = await response.json();
-            
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            storage = firebase.storage();
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            userId = tg.initDataUnsafe?.user?.id || 'test_user';
+    // ... (initializeApp, runUserLogic, setupTheme, updateThemeIcon, setupNavigation) ...
+    // ... (এই ফাংশনগুলো আগের মতোই থাকবে) ...
 
-            tg.showAlert("Welcome! Please be aware of our terms and conditions.");
-            
-            setupTheme();
-            setupNavigation();
-            runUserLogic();
-        } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
-    }
-
-    function runUserLogic() {
-        // ... (আগের মতোই থাকবে) ...
-    }
-
-    function setupTheme() {
-        // ... (আগের মতোই থাকবে) ...
-    }
-    
-    function updateThemeIcon() {
-        // ... (আগের মতোই থাকবে) ...
-    }
-
-    function setupNavigation() {
-        document.querySelectorAll('.nav-item[id]').forEach(item => {
-            item.addEventListener('click', (e) => renderView(e.currentTarget.id.split('-')[1]));
-        });
-        renderView('home');
-    }
-    
     function renderView(viewName) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(`nav-${viewName}`)?.classList.add('active');
-        const container = document.getElementById('app-container');
-        container.innerHTML = '';
-        
+        // ... (আগের মতোই থাকবে, শুধু referral এবং profile এর জন্য case যোগ হবে) ...
         switch(viewName) {
             case 'home': renderHomePage(container); break;
-            case 'tasks': renderTasksPage(container); break; // <-- নতুন যোগ করা হয়েছে
-            case 'leaderboard': renderLeaderboardPage(container); break;
+            case 'tasks': /* ... */ break;
             case 'referral': renderReferralPage(container); break;
             case 'profile': renderProfilePage(container); break;
-            default: container.innerHTML = `<div class="header-bg"></div><div class="top-header"><h1 class="title">${viewName.charAt(0).toUpperCase() + viewName.slice(1)}</h1></div><div class="view" style="margin-top:20px;"><p>This section is coming soon.</p></div>`; break;
+            // ...
         }
     }
 
-    function renderHomePage(container) {
-        // ... (আগের মতোই থাকবে) ...
-    }
-    
-    // --- NEW TASK PAGE LOGIC ---
-    function renderTasksPage(container) {
-        container.innerHTML = `
-            <div class="page-header">
-                <h1 class="title">Available Tasks</h1>
-            </div>
-            <div id="task-list" class="view">Loading...</div>`;
-        loadTasks();
+    // ... (renderHomePage, renderLeaderboardPage) ...
+
+    function renderReferralPage(container) {
+        // ... (আপনার দেখানো ছবির মতো করে রেফারেল পেজ তৈরির কোড) ...
     }
 
-    async function loadTasks() {
-        const listContainer = document.getElementById('task-list');
-        try {
-            const response = await fetch('/api/tasks'); // Assuming you have this API from previous steps
-            const tasks = await response.json();
-            
-            if (tasks.length === 0) {
-                listContainer.innerHTML = '<p>No tasks available right now.</p>';
-                return;
-            }
+    function renderProfilePage(container) {
+        // ... (প্রোফাইল পেজ তৈরির কোড, যেখানে ছবি আপলোড ও নাম পরিবর্তনের অপশন থাকবে) ...
+    }
 
-            listContainer.innerHTML = '';
-            tasks.forEach(task => {
-                const item = document.createElement('div');
-                item.className = 'task-item';
-                item.innerHTML = `
-                    <div class="task-info">
-                        <div class="title">${escapeHTML(task.title)}</div>
-                        <div class="points">+${task.points} Points</div>
-                    </div>
-                    <button class="task-button" id="task-${task.id}">Start</button>
-                `;
-                listContainer.appendChild(item);
-                document.getElementById(`task-${task.id}`).addEventListener('click', () => startTask(task));
-            });
-        } catch(error) {
-            listContainer.innerHTML = '<p>Could not load tasks.</p>';
-            console.error(error);
-        }
-    }
-    
-    function startTask(task) {
-        const button = document.getElementById(`task-${task.id}`);
-        button.innerText = 'Verify';
-        tg.openTelegramLink(task.link);
-        button.onclick = () => completeTask(task, button);
-    }
-    
-    async function completeTask(task, button) {
-        button.disabled = true;
-        button.innerText = 'Verifying...';
+    async function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('userId', userId);
+        formData.append('photo', file);
+
         try {
-            const response = await fetch('/api/complete-task', {
+            const response = await fetch('/api/update-profile', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: userId, taskId: task.id })
+                body: formData,
             });
             const result = await response.json();
-            if (response.ok) {
-                tg.HapticFeedback.notificationOccurred('success');
-                button.innerText = 'Done ✔';
-            } else {
-                tg.HapticFeedback.notificationOccurred('error');
-                button.innerText = 'Retry';
-                button.disabled = false;
-                tg.showAlert(result.error || 'Verification failed. Please ensure you have joined and try again.');
-            }
-        } catch(error) {
-            tg.HapticFeedback.notificationOccurred('error');
-            button.innerText = 'Error';
-            button.disabled = false;
+            // ... (সফল বা ব্যর্থ হওয়ার মেসেজ দেখানোর কোড) ...
+        } catch (error) {
+            // ... (এরর মেসেজ দেখানোর কোড) ...
         }
     }
-    
-    function escapeHTML(str) {
-        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    // --- END TASK PAGE LOGIC ---
 
-
-    function renderLeaderboardPage(container) {
-        // ... (আগের মতোই থাকবে) ...
+    async function saveProfileChanges() {
+        const newName = document.getElementById('username-input').value.trim();
+        const formData = new FormData();
+        formData.append('userId', userId);
+        formData.append('customName', newName);
+        // ... (একইভাবে /api/update-profile এ কল করা হবে) ...
     }
 
     // ... (বাকি সব ফাংশন আগের মতোই থাকবে) ...
-    // ... renderReferralPage, renderProfilePage, handlePhotoUpload, saveProfileChanges, renderProfilePic, generateColor ...
-
+    
     initializeApp();
-});
 </script>
 </body>
 </html>
