@@ -6,9 +6,8 @@
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs for BOTH services -->
+    <!-- Firebase 8 SDK (আপনার কোড অনুযায়ী) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
@@ -46,7 +45,8 @@
         .leaderboard-item.rank-1 .rank-icon { color: var(--gold); }
         .leaderboard-item.rank-2 .rank-icon { color: var(--silver); }
         .leaderboard-item.rank-3 .rank-icon { color: var(--bronze); }
-        .leaderboard-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; font-size: 24px; border: 2px solid var(--border-color); }
+        .leaderboard-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; font-size: 24px; border: 2px solid var(--border-color); background-color: #eee; overflow: hidden; }
+        .leaderboard-pic img { width:100%; height:100%; object-fit:cover; }
         .leaderboard-info { flex-grow: 1; min-width: 0; }
         .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .leaderboard-info .points { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
@@ -72,19 +72,18 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let firestore, rtdb, tg, currentUser = {}, userId, appSettings = {};
+    let db, tg, currentUser = {}, userId;
 
     async function initializeApp() {
         try {
+            // Using /api/config is a good practice, but for simplicity, we'll revert to your original method if it was simpler for you.
+            // Let's assume you've set up the firebaseConfig correctly in your Vercel environment variables.
             const response = await fetch('/api/config');
             if (!response.ok) throw new Error('Config fetch failed');
             const firebaseConfig = await response.json();
             
             firebase.initializeApp(firebaseConfig);
-            // Initialize BOTH services
-            firestore = firebase.firestore();
-            rtdb = firebase.database();
-
+            db = firebase.database();
             tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
@@ -92,40 +91,32 @@ document.addEventListener('DOMContentLoaded', () => {
             
             setupTheme();
             setupNavigation();
-            loadAppSettings(); // Load settings from Realtime DB
-            runUserLogic();   // Load user data from Firestore
+            runUserLogic();
         } catch (error) {
-            document.getElementById('app-container').innerHTML = '<h1>App Failed to Load</h1><p>Please try again later.</p>';
+            document.getElementById('app-container').innerHTML = '<h1>App Failed to Load</h1><p>Please check your connection and try again.</p>';
+            console.error("Initialization Error:", error);
         }
     }
-    
-    // Using REALTIME DATABASE for app settings
-    function loadAppSettings() {
-        rtdb.ref('settings').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                appSettings = snapshot.val();
-            }
-        });
-    }
 
-    // Using FIRESTORE for user data
     function runUserLogic() {
-        const userRef = firestore.collection('users').doc(String(userId));
-        userRef.onSnapshot((doc) => {
+        const userRef = db.ref(`users/${userId}`);
+        userRef.on('value', (snapshot) => {
             const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
             const freshUsername = tg.initDataUnsafe?.user?.username || null;
+            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
             
-            if (doc.exists) {
-                currentUser = doc.data();
+            if (snapshot.exists()) {
+                currentUser = snapshot.val();
                 const updates = {};
                 if (currentUser.name !== freshName) updates.name = freshName;
                 if (currentUser.username !== freshUsername) updates.username = freshUsername;
+                if (currentUser.profilePhotoUrl !== freshPhotoUrl) updates.profilePhotoUrl = freshPhotoUrl;
                 if (Object.keys(updates).length > 0) userRef.update(updates);
             } else {
-                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, createdAt: new Date().toISOString() };
+                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, profilePhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
                 userRef.set(currentUser);
             }
-            // Re-render the current view with updated data
+            // Re-render the current view to show updated data
             const activeNav = document.querySelector('.nav-item.active');
             if (activeNav) {
                 const viewId = activeNav.id.split('-')[1];
@@ -147,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupNavigation() {
-        document.querySelectorAll('.nav-item').forEach(item => {
+        document.querySelectorAll('.nav-item[id]').forEach(item => {
             item.addEventListener('click', (e) => {
                 const viewId = e.currentTarget.id.split('-')[1];
                 renderView(viewId);
@@ -159,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderView(viewName) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         document.getElementById(`nav-${viewName}`)?.classList.add('active');
+        
         const container = document.getElementById('app-container');
         container.innerHTML = '';
         
@@ -179,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = `
             <div class="header-bg"></div>
             <div class="top-header">
-                <h1 class="title">${appSettings.appName || 'SureTask'}</h1>
+                <h1 class="title">SureTask</h1>
                 <button id="theme-toggle-btn"><i id="theme-toggle-icon"></i></button>
             </div>
             <div id="home-view" class="view">
@@ -191,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>`;
         
-        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.name);
+        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.name, currentUser.profilePhotoUrl);
         document.getElementById('leaderboard-btn').addEventListener('click', () => renderView('leaderboard'));
         
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
@@ -204,8 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateThemeIcon();
     }
 
-    // Using FIRESTORE for leaderboard
-    async function renderLeaderboardPage(container) {
+    function renderLeaderboardPage(container) {
         container.innerHTML = `
             <div class="leaderboard-header">
                 <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
@@ -215,48 +206,56 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('back-btn').addEventListener('click', () => renderView('home'));
 
-        const list = document.getElementById('leaderboard-list');
-        try {
-            const querySnapshot = await firestore.collection('users').orderBy('points', 'desc').limit(50).get();
-            if (querySnapshot.empty) { list.innerHTML = 'Leaderboard is empty.'; return; }
+        db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
+            const list = document.getElementById('leaderboard-list');
+            if (!snapshot.exists()) { list.innerHTML = 'Leaderboard is empty.'; return; }
             
             const users = [];
-            querySnapshot.forEach(doc => { users.push(doc.data()); });
+            snapshot.forEach(child => { users.push(child.val()); });
+            users.sort((a, b) => (b.points || 0) - (a.points || 0));
             list.innerHTML = '';
             
             users.forEach((user, index) => {
                 const rank = index + 1;
                 const item = document.createElement('div');
                 item.className = `leaderboard-item rank-${rank}`;
-
-                const userInitial = user.name ? user.name.charAt(0).toUpperCase() : '?';
-                const userColor = generateColor(user.name);
+                const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
                 let rankDisplay = `#${rank}`;
                 if (rank <= 3) { rankDisplay = `<i class='bx bxs-crown rank-icon'></i>`; }
-                const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
 
                 item.innerHTML = `
                     <div class="leaderboard-rank">${rankDisplay}</div>
                     <a href="${profileLink}" target="_blank" style="display:contents;">
-                        <div class="leaderboard-pic" style="background-color: ${userColor};">${userInitial}</div>
+                        <div id="leaderboard-pic-${user.id}" class="leaderboard-pic"></div>
                         <div class="leaderboard-info">
-                            <div class="name">${user.name}</div>
+                            <div class="name">${user.name || 'User'}</div>
                             <div class="points">${user.points || 0} Points</div>
                         </div>
                     </a>`;
                 list.appendChild(item);
+                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.name, user.profilePhotoUrl);
             });
-        } catch(error) {
-            list.innerHTML = 'Could not load leaderboard.';
-            console.error(error);
-        }
+        });
     }
 
-    function renderProfilePic(container, name) {
-        const initial = (name || '?').charAt(0).toUpperCase();
-        const color = generateColor(name);
-        container.style.backgroundColor = color;
-        container.innerHTML = `<span>${initial}</span>`;
+    function renderProfilePic(container, name, photoUrl) {
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => { // Fallback if image fails to load (due to privacy)
+                const initial = (name || '?').charAt(0).toUpperCase();
+                const color = generateColor(name);
+                container.style.backgroundColor = color;
+                container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            const color = generateColor(name);
+            container.style.backgroundColor = color;
+            container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
+        }
     }
 
     function generateColor(str) {
