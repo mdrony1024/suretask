@@ -7,8 +7,8 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        :root { --bg-color: #f0f2f5; --secondary-bg: #ffffff; --text-color: #050505; --secondary-text-color: #65676b; --header-bg: #4a00e0; }
-        body.dark-mode { --bg-color: #12121f; --secondary-bg: #1e1e3f; --text-color: #ffffff; --secondary-text-color: #aaa; --header-bg: #5534a5; }
+        :root { --bg-color: #f0f2f5; --secondary-bg: #ffffff; --text-color: #050505; --secondary-text-color: #65676b; }
+        body.dark-mode { --bg-color: #12121f; --secondary-bg: #1e1e3f; --text-color: #ffffff; --secondary-text-color: #aaa; }
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
         body { margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-color); font-family: 'Roboto', sans-serif; }
         .header { display: flex; align-items: center; margin-bottom: 25px; }
@@ -16,31 +16,20 @@
         .back-button { background: none; border: none; color: var(--text-color); font-size: 28px; cursor: pointer; }
         .leaderboard-list { list-style: none; padding: 0; margin: 0; }
         .list-item { display: flex; align-items: center; background-color: var(--secondary-bg); padding: 12px 15px; border-radius: 15px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .rank-ribbon { position: absolute; top: 0; left: 0; width: 40px; height: 30px; background-color: #bdc3c7; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 15px; font-weight: bold; font-size: 14px; }
-        .list-item.rank-1 .rank-ribbon { background-color: #f1c40f; color: #333; }
-        .list-item.rank-2 .rank-ribbon, .list-item.rank-3 .rank-ribbon { background-color: #95a5a6; }
-        .profile-pic-container { 
-            width: 50px; 
-            height: 50px; 
-            border-radius: 50%; 
-            margin: 0 15px 0 55px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 24px; 
-            font-weight: bold; 
-            color: white;
-            flex-shrink: 0; /* এটি সংকুচিত হওয়া থেকে বিরত রাখবে */
+        .rank-icon { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 40px; height: 35px; 
+            display: flex; align-items: center; justify-content: center; 
+            border-bottom-right-radius: 15px;
+            font-size: 20px;
         }
-        .user-info { flex-grow: 1; min-width: 0; /* এটি টেক্সটকে বর্ডার থেকে বের হতে দেবে না */ }
-        .user-info .name { 
-            font-weight: 500; 
-            font-size: 16px; 
-            margin-bottom: 4px;
-            white-space: nowrap; /* টেক্সটকে এক লাইনে রাখবে */
-            overflow: hidden; /* অতিরিক্ত টেক্সট লুকিয়ে ফেলবে */
-            text-overflow: ellipsis; /* শেষে ... যোগ করবে */
-        }
+        .list-item.rank-1 .rank-icon { background-color: #FFD700; color: #8c6d00; } /* Gold */
+        .list-item.rank-2 .rank-icon { background-color: #C0C0C0; color: #4c4c4c; } /* Silver */
+        .list-item.rank-3 .rank-icon { background-color: #CD7F32; color: #5a350e; } /* Bronze */
+        .profile-pic-container { width: 50px; height: 50px; border-radius: 50%; margin: 0 15px 0 55px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; flex-shrink: 0; }
+        .user-info { flex-grow: 1; min-width: 0; }
+        .user-info .name { font-weight: 500; font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-info .points { font-size: 14px; color: var(--secondary-text-color); font-weight: 500; }
         .list-item-link { text-decoration: none; color: inherit; display: flex; align-items: center; width: 100%; }
         #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #aaa; }
@@ -62,12 +51,9 @@
             fetchLeaderboard();
         });
 
-        // নামের প্রথম অক্ষর দিয়ে একটি সুন্দর রঙ জেনারেট করার ফাংশন
         function generateColor(str) {
             let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = str.charCodeAt(i) + ((hash << 5) - hash);
-            }
+            for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
             let color = '#';
             for (let i = 0; i < 3; i++) {
                 const value = (hash >> (i * 8)) & 0xFF;
@@ -83,7 +69,7 @@
                 const response = await fetch('/api/leaderboard');
                 const leaderboardData = await response.json();
                 loadingElement.style.display = 'none';
-                if (leaderboardData.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#aaa;">Leaderboard is empty.</p>'; return; }
+                if (leaderboardData.length === 0) { listElement.innerHTML = '<p style="text-align:center;color:#aaa;">Leaderboard is empty.</p>'; return; }
                 
                 leaderboardData.forEach((user, index) => {
                     const rank = index + 1;
@@ -91,11 +77,16 @@
                     listItem.className = `list-item rank-${rank}`;
                     
                     const userInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
-                    const userColor = generateColor(user.first_name || 'default');
+                    const userColor = generateColor(user.first_name);
+
+                    // যদি ইউজারনেম থাকে, তাহলে সেই লিঙ্ক ব্যবহার করা হবে, না থাকলে আইডি দিয়ে
+                    const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
+                    
+                    const rankIcon = rank <= 3 ? `<i class='bx bxs-crown'></i>` : `#${rank}`;
 
                     listItem.innerHTML = `
-                        <a href="tg://user?id=${user.id}" class="list-item-link">
-                            <div class="rank-ribbon">#${rank}</div>
+                        <a href="${profileLink}" class="list-item-link" target="_blank">
+                            <div class="rank-icon">${rankIcon}</div>
                             <div class="profile-pic-container" style="background-color: ${userColor};">
                                 ${userInitial}
                             </div>
