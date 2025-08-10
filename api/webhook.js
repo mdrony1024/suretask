@@ -31,11 +31,26 @@ export default async function handler(req, res) {
                 await userRef.update({ first_name: from.first_name, username: from.username || null });
             }
             
-            const APP_URL = `https://${process.env.VERCEL_URL}`;
+            // =======================================================
+            // !! এখানে আমরা আমাদের নিজস্ব ভ্যারিয়েবল APP_URL ব্যবহার করছি !!
+            // =======================================================
+            const APP_URL = process.env.APP_URL; 
+            
             const welcomeText = `Hi *${from.first_name}*,\n\nWelcome to SureTask!`;
-            const replyMarkup = { inline_keyboard: [[{ text: '🚀 Open App', web_app: { url: APP_URL } }]] };
+            const replyMarkup = { 
+                inline_keyboard: [[{ 
+                    text: '🚀 Open App', 
+                    web_app: { url: APP_URL } // এখানে নতুন ভ্যারিয়েবল ব্যবহার করা হচ্ছে
+                }]] 
+            };
+            
             const url = `https://api.telegram.org/bot${process.env.TELEGRAM_API_TOKEN}/sendMessage`;
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chat.id, text: welcomeText, parse_mode: 'Markdown', reply_markup: replyMarkup }) });
+            
+            await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ chat_id: chat.id, text: welcomeText, parse_mode: 'Markdown', reply_markup: replyMarkup }) 
+            });
         }
         res.status(200).send('OK');
     } catch (error) {
