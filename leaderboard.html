@@ -5,62 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Leaderboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
+        :root { --bg-color: #f0f2f5; --secondary-bg: #ffffff; --text-color: #050505; --secondary-text-color: #65676b; --header-bg: #4a00e0; }
+        body.dark-mode { --bg-color: #12121f; --secondary-bg: #1e1e3f; --text-color: #ffffff; --secondary-text-color: #aaa; --header-bg: #5534a5; }
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-        body { margin: 0; padding: 20px; background-color: #12121f; color: white; font-family: 'Roboto', sans-serif; }
+        body { margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-color); font-family: 'Roboto', sans-serif; }
         .header { display: flex; align-items: center; margin-bottom: 25px; }
-        .header h1 { margin: 0 0 0 15px; font-size: 24px; }
-        .back-button { background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
+        .header h1 { margin: 0 0 0 15px; font-size: 24px; font-weight: 700; }
+        .back-button { background: none; border: none; color: var(--text-color); font-size: 28px; cursor: pointer; }
         .leaderboard-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { display: flex; align-items: center; background-color: #1e1e3f; padding: 10px 15px; border-radius: 12px; margin-bottom: 10px; }
-        .rank { font-size: 16px; font-weight: bold; min-width: 35px; color: #aaa; }
-        .profile-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 15px; object-fit: cover; background-color: #333; }
+        .list-item-link { text-decoration: none; color: inherit; }
+        .list-item { display: flex; align-items: center; background-color: var(--secondary-bg); padding: 12px 15px; border-radius: 15px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .rank-ribbon { position: absolute; top: -1px; left: -1px; width: 40px; height: 40px; background-color: #bdc3c7; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 15px; font-weight: bold; font-size: 14px; }
+        .list-item.rank-1 .rank-ribbon { background-color: #f1c40f; color: #333; }
+        .list-item.rank-2 .rank-ribbon, .list-item.rank-3 .rank-ribbon { background-color: #95a5a6; }
+        .profile-pic { width: 50px; height: 50px; border-radius: 50%; margin: 0 15px 0 50px; object-fit: cover; background-color: #e0e0e0; }
         .user-info { flex-grow: 1; }
-        .user-info .name { font-weight: 500; font-size: 16px; }
-        .user-info .points { font-size: 14px; color: #aaa; margin-top: 2px; }
-        .profile-link { text-decoration: none; color: inherit; display: contents; }
+        .user-info .name { font-weight: 500; font-size: 16px; margin-bottom: 4px; }
+        .user-info .points { font-size: 14px; color: var(--secondary-text-color); font-weight: 500; }
         #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #aaa; }
     </style>
 </head>
 <body>
     <div class="header">
-        <button onclick="window.history.back()" class="back-button">&larr;</button>
-        <h1>🏆 Leaderboard</h1>
+        <a href="/index.html" class="back-button"><i class='bx bx-arrow-back'></i></a>
+        <h1><i class='bx bxs-trophy'></i> Leaderboard</h1>
     </div>
     <ul id="leaderboardList" class="leaderboard-list"></ul>
     <div id="loading">Loading...</div>
 
     <script>
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme === 'dark') document.body.classList.add('dark-mode');
         window.addEventListener('load', () => {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            document.body.style.backgroundColor = tg.themeParams.bg_color || '#12121f';
+            try { window.Telegram.WebApp.ready(); } catch(e){}
             fetchLeaderboard();
         });
-
         async function fetchLeaderboard() {
             const listElement = document.getElementById('leaderboardList');
             const loadingElement = document.getElementById('loading');
             try {
                 const response = await fetch('/api/leaderboard');
                 const leaderboardData = await response.json();
-                
                 loadingElement.style.display = 'none';
-
-                if (leaderboardData.length === 0) {
-                    listElement.innerHTML = '<p style="text-align: center; color: #aaa;">Leaderboard is empty.</p>';
-                    return;
-                }
-
+                if (leaderboardData.length === 0) { listElement.innerHTML = '<p style="text-align:center; color:#aaa;">Leaderboard is empty.</p>'; return; }
+                
                 leaderboardData.forEach((user, index) => {
                     const rank = index + 1;
                     const listItem = document.createElement('li');
-                    listItem.className = 'list-item';
+                    listItem.className = `list-item rank-${rank}`;
                     
+                    // এখানে প্রোফাইল ছবি না থাকলে ডিফল্ট ইনিশিয়াল দেখানো হবে
+                    const userInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
+                    const profileImageHTML = user.photo_url 
+                        ? `<img src="${user.photo_url}" class="profile-pic" onerror="this.onerror=null;this.replaceWith(document.createTextNode('${userInitial}')); this.parentElement.style.backgroundColor='#777';">`
+                        : `<div class="profile-pic" style="display:flex; align-items:center; justify-content:center; font-size: 24px; font-weight:bold; background-color: #777; color: white;">${userInitial}</div>`;
+
                     listItem.innerHTML = `
-                        <a href="tg://user?id=${user.id}" class="profile-link">
-                            <div class="rank">#${rank}</div>
-                            <img src="${user.photo_url || ''}" class="profile-pic" onerror="this.style.backgroundColor='#444'; this.src='';">
+                        <a href="tg://user?id=${user.id}" class="list-item-link" style="display: contents;">
+                            <div class="rank-ribbon">#${rank}</div>
+                            ${profileImageHTML}
                             <div class="user-info">
                                 <div class="name">${escapeHTML(user.first_name)}</div>
                                 <div class="points">${user.points} Points</div>
@@ -69,16 +74,9 @@
                     `;
                     listElement.appendChild(listItem);
                 });
-            } catch (error) {
-                loadingElement.innerText = 'Failed to load leaderboard.';
-                console.error('Error fetching leaderboard:', error);
-            }
+            } catch (error) { loadingElement.innerText = 'Failed to load leaderboard.'; }
         }
-        function escapeHTML(str) {
-            const p = document.createElement('p');
-            p.appendChild(document.createTextNode(str || ''));
-            return p.innerHTML;
-        }
+        function escapeHTML(str) { const p = document.createElement('p'); p.appendChild(document.createTextNode(str || '')); return p.innerHTML; }
     </script>
 </body>
 </html>
