@@ -2,53 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Leaderboard - SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-color: #f0f2f5; --secondary-bg: #ffffff; --text-color: #050505; --secondary-text-color: #65676b; }
-        body.dark-mode { --bg-color: #12121f; --secondary-bg: #1e1e3f; --text-color: #ffffff; --secondary-text-color: #aaa; }
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-        body { margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-color); font-family: 'Roboto', sans-serif; }
+        :root { --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --accent-color: #5856d6; --gold: #ffc700; --silver: #c0c0c0; --bronze: #cd7f32; }
+        body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: var(--light-secondary-text); }
+        body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: var(--dark-secondary-text); }
+        body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-color); }
         .header { display: flex; align-items: center; margin-bottom: 25px; }
-        .header h1 { margin: 0 0 0 15px; font-size: 24px; font-weight: 700; }
+        .header .title { font-size: 22px; font-weight: 600; margin-left: 15px; }
         .back-button { background: none; border: none; color: var(--text-color); font-size: 28px; cursor: pointer; }
-        .leaderboard-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { display: flex; align-items: center; background-color: var(--secondary-bg); padding: 12px 15px; border-radius: 15px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .rank-icon { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 40px; height: 35px; 
-            display: flex; align-items: center; justify-content: center; 
-            border-bottom-right-radius: 15px;
-            font-size: 20px;
-        }
-        .list-item.rank-1 .rank-icon { background-color: #FFD700; color: #8c6d00; } /* Gold */
-        .list-item.rank-2 .rank-icon { background-color: #C0C0C0; color: #4c4c4c; } /* Silver */
-        .list-item.rank-3 .rank-icon { background-color: #CD7F32; color: #5a350e; } /* Bronze */
-        .profile-pic-container { width: 50px; height: 50px; border-radius: 50%; margin: 0 15px 0 55px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; flex-shrink: 0; }
-        .user-info { flex-grow: 1; min-width: 0; }
-        .user-info .name { font-weight: 500; font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-info .points { font-size: 14px; color: var(--secondary-text-color); font-weight: 500; }
-        .list-item-link { text-decoration: none; color: inherit; display: flex; align-items: center; width: 100%; }
+        #leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .leaderboard-rank-badge { position: absolute; top: 0; left: 0; background-color: var(--accent-color); color: white; padding: 3px 10px; font-size: 12px; font-weight: 600; border-radius: 15px 0 15px 0; }
+        .leaderboard-pic, .leaderboard-pic-initial { width: 50px; height: 50px; border-radius: 50%; margin-left: 55px; margin-right: 15px; flex-shrink: 0; }
+        .leaderboard-pic { object-fit: cover; background-color: #eee; }
+        .leaderboard-pic-initial { display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 24px; }
+        .leaderboard-info { flex-grow: 1; min-width: 0; }
+        .leaderboard-info .name { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .leaderboard-info .points { font-size: 14px; color: var(--accent-color); font-weight: 500; margin-top: 2px; }
+        .crown-icon { font-size: 20px; }
+        .list-item-link { text-decoration: none; color: inherit; display: contents; }
+        .list-item.rank-1 .leaderboard-rank-badge { background-color: var(--gold); color: #fff; }
+        .list-item.rank-2 .leaderboard-rank-badge { background-color: var(--silver); color: #fff; }
+        .list-item.rank-3 .leaderboard-rank-badge { background-color: var(--bronze); color: #fff; }
         #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #aaa; }
     </style>
 </head>
 <body>
     <div class="header">
         <a href="/index.html" class="back-button"><i class='bx bx-arrow-back'></i></a>
-        <h1><i class='bx bxs-trophy'></i> Leaderboard</h1>
+        <h1 class="title">Leaderboard</h1>
     </div>
-    <ul id="leaderboardList" class="leaderboard-list"></ul>
-    <div id="loading">Loading...</div>
+    <div id="leaderboard-list"></div>
+    <div id="loading">Loading leaderboard...</div>
 
     <script>
-        const currentTheme = localStorage.getItem('theme');
-        if (currentTheme === 'dark') document.body.classList.add('dark-mode');
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.classList.add(savedTheme);
         window.addEventListener('load', () => {
-            try { window.Telegram.WebApp.ready(); } catch(e){}
-            fetchLeaderboard();
+            try { window.Telegram.WebApp.ready(); } catch (e) {}
+            loadLeaderboard();
         });
 
         function generateColor(str) {
@@ -62,45 +59,62 @@
             return color;
         }
 
-        async function fetchLeaderboard() {
-            const listElement = document.getElementById('leaderboardList');
-            const loadingElement = document.getElementById('loading');
+        async function loadLeaderboard() {
+            const listContainer = document.getElementById('leaderboard-list');
+            const loadingDiv = document.getElementById('loading');
             try {
                 const response = await fetch('/api/leaderboard');
-                const leaderboardData = await response.json();
-                loadingElement.style.display = 'none';
-                if (leaderboardData.length === 0) { listElement.innerHTML = '<p style="text-align:center;color:#aaa;">Leaderboard is empty.</p>'; return; }
+                if (!response.ok) throw new Error('Network response was not ok');
+                const users = await response.json();
                 
-                leaderboardData.forEach((user, index) => {
+                loadingDiv.style.display = 'none';
+                if (!users || users.length === 0) {
+                    listContainer.innerHTML = '<p style="text-align:center;color:#aaa;">Leaderboard is empty.</p>';
+                    return;
+                }
+                
+                listContainer.innerHTML = '';
+                users.forEach((user, index) => {
                     const rank = index + 1;
-                    const listItem = document.createElement('li');
-                    listItem.className = `list-item rank-${rank}`;
+                    const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
                     
                     const userInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
                     const userColor = generateColor(user.first_name);
 
-                    // যদি ইউজারনেম থাকে, তাহলে সেই লিঙ্ক ব্যবহার করা হবে, না থাকলে আইডি দিয়ে
-                    const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
-                    
-                    const rankIcon = rank <= 3 ? `<i class='bx bxs-crown'></i>` : `#${rank}`;
+                    const profileImageHTML = user.photo_url
+                        ? `<img src="${user.photo_url}" class="leaderboard-pic" onerror="this.outerHTML = '<div class=\\'leaderboard-pic-initial\\' style=\\'background-color:${userColor}\\'>${userInitial}</div>';">`
+                        : `<div class="leaderboard-pic-initial" style="background-color:${userColor};">${userInitial}</div>`;
 
-                    listItem.innerHTML = `
-                        <a href="${profileLink}" class="list-item-link" target="_blank">
-                            <div class="rank-icon">${rankIcon}</div>
-                            <div class="profile-pic-container" style="background-color: ${userColor};">
-                                ${userInitial}
+                    const crownIcon = rank === 1 ? `<i class='bx bxs-crown crown-icon' style='color:var(--gold)'></i>` : '';
+                    
+                    const itemLink = document.createElement('a');
+                    itemLink.href = profileLink;
+                    itemLink.target = "_blank";
+                    itemLink.style.textDecoration = 'none';
+                    itemLink.style.color = 'inherit';
+
+                    itemLink.innerHTML = `
+                        <div class="leaderboard-item rank-${rank}">
+                            <div class="leaderboard-rank-badge">#${rank}</div>
+                            ${profileImageHTML}
+                            <div class="leaderboard-info">
+                                <div class="name">${crownIcon}<span>${escapeHTML(user.first_name)}</span></div>
+                                <div class="points">${user.points || 0} Points</div>
                             </div>
-                            <div class="user-info">
-                                <div class="name">${escapeHTML(user.first_name)}</div>
-                                <div class="points">${user.points} Points</div>
-                            </div>
-                        </a>
+                        </div>
                     `;
-                    listElement.appendChild(listItem);
+                    listContainer.appendChild(itemLink);
                 });
-            } catch (error) { loadingElement.innerText = 'Failed to load leaderboard.'; }
+            } catch (err) {
+                loadingDiv.innerText = 'Could not load leaderboard.';
+                console.error('Leaderboard Error:', err);
+            }
         }
-        function escapeHTML(str) { const p = document.createElement('p'); p.appendChild(document.createTextNode(str || '')); return p.innerHTML; }
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(str || ''));
+            return p.innerHTML;
+        }
     </script>
 </body>
 </html>
