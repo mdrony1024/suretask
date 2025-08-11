@@ -1,10 +1,6 @@
-// প্রয়োজনীয় লাইব্রেরি
 const admin = require('firebase-admin');
 
 // --- Firebase Admin SDK চালু করা ---
-// আপনার config.js থেকে serviceAccount তথ্য লোড করুন অথবা Vercel Environment Variables ব্যবহার করুন
-// আমরা ধরে নিচ্ছি আপনার serviceAccount তথ্য Vercel এর Environment Variable এ আছে
-
 try {
   if (!admin.apps.length) {
     admin.initializeApp({
@@ -19,19 +15,18 @@ try {
         "token_uri": process.env.FIREBASE_TOKEN_URI,
         "auth_provider_x509_cert_url": process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
         "client_x509_cert_url": process.env.FIREBASE_CLIENT_X509_CERT_URL
-      }),
-      databaseURL: `https://detpocket-default-rtdb.firebaseio.com` // এখানে আপনার Realtime Database URL দিন
+      })
     });
   }
 } catch (e) {
   console.error('Firebase admin initialization error', e.stack);
 }
 
-const db = admin.database();
+// Firestore এর ইনস্ট্যান্স নিন
+const firestore = admin.firestore();
 
 // --- বট এর মূল লজিক ---
 module.exports = async (req, res) => {
-  // নিশ্চিত করুন যে রিকোয়েস্টটি POST মেথডে এসেছে
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
@@ -39,51 +34,47 @@ module.exports = async (req, res) => {
   try {
     const { message } = req.body;
 
-    // যদি কোনো মেসেজ না থাকে, তাহলে কিছুই করার নেই
-    if (!message) {
+    if (!message || !message.text || !message.text.startsWith('/start')) {
       return res.status(200).send('OK');
     }
 
     const newUserId = String(message.from.id);
+    const userDocRef = firestore.collection('users').doc(newUserId);
+    const userDoc = await userDocRef.get();
 
-    // শুধু /start কমান্ড নিয়ে কাজ করা হবে
-    if (message.text && message.text.startsWith('/start')) {
-      const userRef = db.ref(`users/${newUserId}`);
-      const snapshot = await userRef.once('value');
+    // শুধুমাত্র নতুন ব্যবহারকারীদের জন্য রেফারেল কাজ করবে
+    if (!userDoc.exists) {
+      const parts = message.text.split(' ');
+      
+      const newUserProfile = {
+        id: newUserId,
+        name: message.from.first_name || 'User',
+        username: message.from.username || null,
+        points: 0,
+        referralCount: 0,
+        referralEarnings: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp() // Firestore এর জন্য সঠিক টাইমস্ট্যাম্প
+      };
 
-      // শুধুমাত্র নতুন ব্যবহারকারীদের জন্য রেফারেল লজিক কাজ করবে
-      if (!snapshot.exists()) {
-        const parts = message.text.split(' ');
-        
-        // ব্যবহারকারীর প্রোফাইল তৈরি করা
-        const newUserProfile = {
-          id: newUserId,
-          name: message.from.first_name || 'User',
-          username: message.from.username || null,
-          points: 0,
-          createdAt: admin.database.ServerValue.TIMESTAMP
-        };
+      // যদি রেফারেল কোড থাকে
+      if (parts.length > 1 && parts[1]) {
+        const referrerId = parts[1];
+        newUserProfile.referredBy = referrerId;
 
-        // যদি রেফারেল কোড থাকে (যেমন: /start 12345678)
-        if (parts.length > 1 && parts[1]) {
-          const referrerId = parts[1];
-          newUserProfile.referredBy = referrerId; // রেফারার আইডি সেভ করা
-
-          // যিনি রেফার করেছেন, তার referralCount ১ বাড়িয়ে দেওয়া
-          const referrerRef = db.ref(`users/${referrerId}/referralCount`);
-          await referrerRef.transaction((currentCount) => {
-            return (currentCount || 0) + 1;
-          });
-        }
-        
-        // নতুন ব্যবহারকারীকে ডাটাবেসে সেভ করা
-        await userRef.set(newUserProfile);
+        // যিনি রেফার করেছেন, তার referralCount ১ বাড়িয়ে দেওয়া
+        const referrerDocRef = firestore.collection('users').doc(referrerId);
+        // Firestore এর নিজস্ব increment পদ্ধতি ব্যবহার করা হয়েছে
+        await referrerDocRef.update({
+          referralCount: admin.firestore.FieldValue.increment(1)
+        });
       }
+      
+      // নতুন ব্যবহারকারীকে Firestore-এ সেভ করা
+      await userDocRef.set(newUserProfile);
     }
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('Error processing webhook:', error.message);
   }
-
-  // টেলিগ্রামকে জানানো যে আমরা মেসেজ পেয়েছি, যাতে সে আবার না পাঠায়
+  
   res.status(200).send('OK');
 };
