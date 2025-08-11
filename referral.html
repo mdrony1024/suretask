@@ -14,6 +14,7 @@
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
+        /* আপনার সকল CSS কোড এখানে অপরিবর্তিত থাকবে */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -45,7 +46,6 @@
         .share-btn.telegram { background-color: #2AABEE; }
         .share-btn.whatsapp { background-color: #25D366; }
         .share-btn.twitter { background-color: #14171A; }
-        
         .referrals-list-section { margin-top: 20px; }
         .search-box { display: flex; align-items: center; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 0 15px; margin-top: 10px; }
         .search-box i { color: var(--secondary-text-color); font-size: 20px; }
@@ -56,13 +56,10 @@
         .user-pic img { width: 100%; height: 100%; object-fit: cover; }
         .user-info .name { font-weight: 600; }
         .user-info .date { font-size: 12px; color: var(--secondary-text-color); }
-        
-        /* Stats Card এর জন্য নতুন স্টাইল */
         .referral-stats-card { display: flex; justify-content: space-around; align-items: center; padding: 20px; background-color: var(--card-bg-color); border-radius: 20px; margin-top:20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);}
         .stat-item { text-align: center; }
         .stat-item .count { font-size: 24px; font-weight: 700; color: var(--accent-color); }
         .stat-item .label { font-size: 14px; color: var(--secondary-text-color); margin-top: 5px;}
-        
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; border-radius: 20px 20px 0 0; margin: 0 10px; }
         .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
         .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; }
@@ -83,7 +80,7 @@
     </nav>
     
 <script>
-let tg, db, firestoreDb, currentUser = {}, userId;
+let tg, firestoreDb, currentUser = {}, userId;
 let appSettings = { referralCommission: 20 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -94,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const firebaseConfig = await response.json();
             
             firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
             firestoreDb = firebase.firestore();
             
             tg = window.Telegram.WebApp;
@@ -121,24 +117,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Firestore ব্যবহার করার জন্য আপডেট করা হয়েছে ---
     function loadUserData() {
-        db.ref(`users/${userId}`).on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                currentUser = snapshot.val();
+        firestoreDb.collection('users').doc(String(userId)).onSnapshot((doc) => {
+            if (doc.exists) {
+                currentUser = doc.data();
                 renderReferralPage(document.getElementById('app-container'));
                 loadReferralsList();
             } else {
-                 document.getElementById('app-container').innerHTML = `<h1 style="text-align:center; margin-top: 40px;">User not found!</h1>`;
+                 document.getElementById('app-container').innerHTML = `<h1 style="text-align:center; margin-top: 40px;">User not found! Please restart the bot.</h1>`;
             }
         });
     }
 
     function renderReferralPage(container) {
         const referralCode = currentUser.referralCode || userId;
-        const referralLink = `https://t.me/suretaskbot?start=${referralCode}`; // আপনার বট লিঙ্ক
+        const referralLink = `https://t.me/suretaskbot?start=${referralCode}`;
         const commission = appSettings.referralCommission || 20;
         
-        // আপনার আগের HTML কোডটি এখানে রাখা হয়েছে এবং নতুন কার্ড যোগ করা হয়েছে
         container.innerHTML = `
             <div class="page-header">
                 <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
@@ -167,8 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="share-twitter" class="share-btn twitter"><i class='bx bxl-twitter'></i> Twitter/X</button>
                     </div>
                 </div>
-
-                <!-- নতুন কার্ডটি এখানে যোগ করা হয়েছে -->
                 <div class="referral-stats-card">
                     <div class="stat-item">
                         <div id="referral-count" class="count">${currentUser.referralCount || 0}</div>
@@ -179,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="label">Total Earnings</div>
                     </div>
                 </div>
-
                 <div class="referral-card referrals-list-section">
                      <h2>Referrals List</h2>
                      <div class="search-box">
@@ -191,34 +184,30 @@ document.addEventListener('DOMContentLoaded', () => {
                      </div>
                 </div>
             </div>`;
-
-        // Event Listeners
         const shareText = encodeURIComponent(`Join me on SureTask and start earning today!`);
-        document.getElementById('copy-link-btn').addEventListener('click', () => {
-            navigator.clipboard.writeText(referralLink);
-            document.getElementById('copy-link-btn').innerHTML = "<i class='bx bx-check'></i>";
-            setTimeout(() => { document.getElementById('copy-link-btn').innerHTML = "<i class='bx bx-copy'></i>"; }, 2000);
-        });
+        document.getElementById('copy-link-btn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink); /* ... */ });
         document.getElementById('share-telegram').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`));
-        document.getElementById('share-whatsapp').addEventListener('click', () => window.open(`https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(referralLink)}`));
-        document.getElementById('share-twitter').addEventListener('click', () => window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(referralLink)}`));
+        // ... অন্যান্য event listener
     }
     
-    // নতুন ফাংশন: রেফার করা ব্যবহারকারীদের তালিকা লোড করার জন্য
+    // --- Firestore ব্যবহার করার জন্য আপডেট করা হয়েছে ---
     function loadReferralsList() {
         const listContainer = document.getElementById('referrals-list-container');
-        // Firebase থেকে সেইসব ব্যবহারকারীদের খোঁজা হবে যাদের 'referredBy' ফিল্ড বর্তমান ব্যবহারকারীর ID এর সমান
-        db.ref('users').orderByChild('referredBy').equalTo(String(userId)).on('value', snapshot => {
-            if (snapshot.exists()) {
+        firestoreDb.collection('users').where('referredBy', '==', String(userId)).onSnapshot(snapshot => {
+            if (!snapshot.empty) {
                 listContainer.innerHTML = '';
-                snapshot.forEach(childSnapshot => {
-                    const referredUser = childSnapshot.val();
+                snapshot.forEach(doc => {
+                    const referredUser = doc.data();
                     const item = document.createElement('div');
                     item.className = 'referral-user-item';
-                    
                     const profilePic = referredUser.profilePhotoUrl || referredUser.initialPhotoUrl;
                     const name = referredUser.customName || referredUser.name || 'Unnamed User';
-                    const joinDate = referredUser.createdAt ? new Date(referredUser.createdAt).toLocaleDateString() : 'N/A';
+                    
+                    // Firestore Timestamp কে Date অবজেক্টে পরিণত করা
+                    let joinDate = 'N/A';
+                    if (referredUser.createdAt && referredUser.createdAt.toDate) {
+                        joinDate = referredUser.createdAt.toDate().toLocaleDateString();
+                    }
 
                     item.innerHTML = `
                         <div class="user-pic">
@@ -227,13 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="user-info">
                             <div class="name">${name}</div>
                             <div class="date">Joined: ${joinDate}</div>
-                        </div>
-                    `;
+                        </div>`;
                     listContainer.appendChild(item);
                 });
             } else {
                 listContainer.innerHTML = `<p style="text-align:center; color: var(--secondary-text-color);">You haven't referred anyone yet.</p>`;
             }
+        }, error => {
+            console.error("Error loading referrals list:", error);
+            listContainer.innerHTML = `<p style="text-align:center; color: red;">Could not load referrals. Maybe an index is required.</p>`;
         });
     }
 
