@@ -6,9 +6,12 @@
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <!-- Firestore SDK যোগ করা হয়েছে -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
         :root {
@@ -36,7 +39,6 @@
         .action-button { width: 100%; padding: 12px; margin-top: 15px; background-color: var(--accent-color); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; }
         .page-header { display: flex; align-items: center; padding: 15px; }
         .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
-        /* --- NEW LEADERBOARD STYLES --- */
         #leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
         .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .leaderboard-rank { font-weight: 600; font-size: 16px; width: 40px; text-align: center; color: var(--secondary-text-color); position: relative; }
@@ -51,7 +53,6 @@
         .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
         .leaderboard-stats .points, .leaderboard-stats .referrals { font-size: 13px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
         .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
-        /* Profile Page Styles */
         #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
         .form-group { margin-top: 15px; text-align: left; }
         .form-group label { font-weight: 500; font-size: 14px; }
@@ -59,7 +60,6 @@
         .status-message { margin-top: 15px; font-weight: 500; }
         .status-success { color: var(--success); }
         .status-error { color: var(--danger); }
-        /* --- NEW BOTTOM NAV --- */
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; border-radius: 20px 20px 0 0; margin: 0 10px; }
         .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
         .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; transition: all 0.3s; }
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tg.showAlert("Welcome! Please be aware of our terms and conditions.");
             
             setupTheme();
-            setupNavigation();
+            setupNavigation(); // নেভিগেশন সেটআপ এখানে কল করা হয়েছে
             runUserLogic();
         } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
@@ -125,8 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
                 userRef.set(currentUser);
             }
+            // বর্তমানে যে পেজটি খোলা আছে, সেটিকে রেন্ডার করুন
             const activeNav = document.querySelector('.nav-item.active');
-            if (activeNav) renderView(activeNav.id.split('-')[1]);
+            if (activeNav) {
+                const viewName = activeNav.id.split('-')[1];
+                 if(viewName !== 'referral') { // রেফারেল পেজ বাদে অন্য পেজ রেন্ডার হবে
+                    renderView(viewName);
+                 }
+            }
         });
     }
 
@@ -140,16 +146,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
     }
 
+    // --- নেভিগেশন ফাংশন আপডেট করা হয়েছে ---
     function setupNavigation() {
         document.querySelectorAll('.nav-item[id]').forEach(item => {
-            item.addEventListener('click', (e) => renderView(e.currentTarget.id.split('-')[1]));
+            item.addEventListener('click', (e) => {
+                const viewName = e.currentTarget.id.split('-')[1];
+
+                // যদি রেফারেল বাটনে ক্লিক হয়, তাহলে referral.html পেজে নিয়ে যাবে
+                if (viewName === 'referral') {
+                    // থিম সেভ করে রাখা হয় যাতে নতুন পেজেও একই থিম থাকে
+                    localStorage.setItem('theme', document.body.className);
+                    window.location.href = 'referral.html';
+                } else {
+                    renderView(viewName);
+                }
+            });
         });
+        // শুরুতে হোম পেজ দেখানোর জন্য
         renderView('home');
     }
     
+    // --- renderView ফাংশন থেকে 'referral' case সরিয়ে দেওয়া হয়েছে ---
     function renderView(viewName) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(`nav-${viewName}`)?.classList.add('active');
+        const activeNavItem = document.getElementById(`nav-${viewName}`);
+        if(activeNavItem) activeNavItem.classList.add('active');
+        
         const container = document.getElementById('app-container');
         container.innerHTML = '';
         
@@ -157,9 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'home': renderHomePage(container); break;
             case 'leaderboard': renderLeaderboardPage(container); break;
             case 'tasks': window.location.href = '/tasks.html'; break;
-            case 'referral': renderReferralPage(container); break;
+            // 'referral' case টি আর এখানে নেই
             case 'profile': renderProfilePage(container); break;
-            default: container.innerHTML = `<div class="header-bg"></div><div class="top-header"><h1 class="title">${viewName.charAt(0).toUpperCase() + viewName.slice(1)}</h1></div><div class="view" style="margin-top:20px;"><p>This section is coming soon.</p></div>`; break;
+            default: container.innerHTML = `<div class="view" style="margin-top:20px;"><p>Content for ${viewName} is coming soon.</p></div>`; break;
         }
     }
 
@@ -195,13 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLeaderboardPage(container) {
         container.innerHTML = `
             <div class="page-header">
-                <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
+                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Leaderboard</h1>
             </div>
             <div id="leaderboard-list" class="view">Loading...</div>`;
         
-        document.getElementById('back-btn').addEventListener('click', () => renderView('home'));
-
         db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
             const list = document.getElementById('leaderboard-list');
             if (!snapshot.exists()) { list.innerHTML = 'Leaderboard is empty.'; return; }
@@ -240,23 +260,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderReferralPage(container) {
-        const referralLink = `https://t.me/suretaskbot?start=${currentUser.referralCode || ''}`;
-        container.innerHTML = `<div class="top-header" style="color:var(--text-color);"><h1 class="title">Refer Friends</h1></div>
-            <div class="view"><div class="profile-card" style="margin-top: 10px;">
-                <h2>Invite & Earn</h2><p>Share your link and earn rewards!</p>
-                <input type="text" id="referral-link" value="${referralLink}" readonly>
-                <button id="share-link-btn" class="action-button">Share Link</button>
-            </div></div>`;
-        
-        document.getElementById('share-link-btn').addEventListener('click', () => {
-            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=Join%20SureTask%20and%20earn%20rewards!`);
-        });
-    }
+    // --- renderReferralPage ফাংশনটি এখান থেকে সরিয়ে দেওয়া হয়েছে ---
 
     function renderProfilePage(container) {
         container.innerHTML = `
-            <div class="top-header" style="color:var(--text-color);"><h1 class="title">Edit Profile</h1></div>
+            <div class="page-header">
+                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
+                <h1 class="title">Edit Profile</h1>
+            </div>
             <div class="view"><div class="profile-card" style="margin-top: 10px;">
                 <div id="profile-page-pic" class="profile-pic" style="margin-top:0;">
                      <div id="profile-pic-upload"><i class='bx bxs-camera'></i></div>
