@@ -36,7 +36,7 @@
         #logout-btn { background: var(--danger-color); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 500;}
         
         table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; word-break: break-all; }
         .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .form-card input, .form-card select, .form-card button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif;}
         .form-card button { background: var(--primary-color); color: white; border: none; font-weight: 500; cursor: pointer; }
@@ -54,13 +54,7 @@
 <body>
 
     <section id="login-section">
-        <div class="login-box">
-            <h2>Admin Panel Login</h2>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button id="login-btn">Login</button>
-            <p id="login-error" style="color:red;"></p>
-        </div>
+        <!-- ... লগইন বক্স ... -->
     </section>
 
     <section id="admin-panel">
@@ -88,7 +82,7 @@
 
 <script>
     let firebaseApp, auth, firestoreDb, idToken;
-    const ADMIN_EMAIL = 'mdrony786r@gmail.com'; // <-- আপনার অ্যাডমিন ইমেইল এখানে দিন
+    const ADMIN_EMAIL = 'mdrony786r@gmail.com'; // <-- আপনার অ্যাডমিন ইমেইল
 
     document.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -124,28 +118,16 @@
             document.getElementById('admin-panel').style.display = 'block';
             loadDashboard();
         } else {
-            if (user) auth.signOut(); // যদি অন্য কোনো ইউজার লগইন করে, তাকে লগআউট করে দেওয়া হবে
+            if (user) auth.signOut();
             document.getElementById('login-section').style.display = 'flex';
             document.getElementById('admin-panel').style.display = 'none';
         }
     }
 
     function handleLogin() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const loginError = document.getElementById('login-error');
-        loginError.innerText = '';
-        
-        if (email !== ADMIN_EMAIL) {
-            loginError.innerText = "This email is not authorized.";
-            return;
-        }
-
-        auth.signInWithEmailAndPassword(email, password).catch(err => {
-            loginError.innerText = err.message;
-        });
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
-
+    
     function loadContent(title, loaderFunction) {
         document.getElementById('content-title').innerText = title;
         loaderFunction();
@@ -164,12 +146,8 @@
         document.getElementById('admin-content').innerHTML = html;
     }
 
-    // --- বাকি সব ফাংশন অপরিবর্তিত থাকবে ---
-    // (loadDashboard, loadUsers, loadTasks, loadPromotions, loadSettings, etc.)
-    // (searchUsers, updateUser, editPoints, toggleBan, createTask, etc.)
-    // আপনি আগের উত্তর থেকে এই ফাংশনগুলো এখানে কপি-পেস্ট করতে পারেন।
-    // আমি এখানে loadDashboard ফাংশনটি দিয়ে দিচ্ছি উদাহরণ হিসেবে।
-    
+    // --- সম্পূর্ণ কার্যকরী ফাংশনগুলো ---
+
     async function loadDashboard() {
         renderHTML(`
             <div class="form-card">
@@ -179,20 +157,202 @@
         `);
     }
 
-    // placeholder ফাংশনগুলো যোগ করা হলো
-    async function loadUsers(searchTerm = '') { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function loadTasks() { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function loadPromotions() { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function loadSettings() { /* আগের উত্তর থেকে কোড আনুন */ }
-    function searchUsers(event) { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function updateUser(userId, action, value) { /* আগের উত্তর থেকে কোড আনুন */ }
-    function editPoints(userId) { /* আগের উত্তর থেকে কোড আনুন */ }
-    function toggleBan(userId, isCurrentlyBanned) { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function createTask(e) { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function deleteTask(taskId) { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function saveSettings(e) { /* আগের উত্তর থেকে কোড আনুন */ }
-    async function deletePromotion(promotionId) { /* আগের উত্তর থেকে কোড আনুন */ }
+    async function loadUsers(searchTerm = '') {
+        renderHTML('<p>Loading users...</p>');
+        try {
+            const users = await fetchData(`/api/admin/users?search=${encodeURIComponent(searchTerm)}`);
+            let tableRows = users.map(user => {
+                const isBanned = user.banned === true;
+                return `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.points || 0}</td>
+                        <td>${isBanned ? `<span style="color:red; font-weight:bold;">Banned</span>` : 'Active'}</td>
+                        <td>
+                            <button class="action-btn" onclick="editPoints('${user.id}')">Edit Points</button>
+                            <button class="action-btn ${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="toggleBan('${user.id}', ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            renderHTML(`
+                <div class="form-card">
+                    <input id="user-search" type="text" placeholder="Search by User ID or Name..." onkeyup="searchUsers(event)" value="${searchTerm}">
+                </div>
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
 
+    async function loadTasks() {
+        renderHTML('<p>Loading tasks...</p>');
+        try {
+            const tasks = await fetchData('/api/admin/tasks');
+            let tableRows = tasks.map(task => `
+                <tr>
+                    <td>${task.title}</td>
+                    <td>${task.taskType}</td>
+                    <td>${task.points}</td>
+                    <td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td>
+                </tr>
+            `).join('');
+            renderHTML(`
+                <div class="form-card">
+                    <h3>Create New Admin Task</h3>
+                    <form id="task-form">
+                        <input id="task-title" placeholder="Task Title" required>
+                        <input id="task-points" type="number" placeholder="Reward Points" required>
+                        <select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select>
+                        <input id="task-url" placeholder="URL (optional)">
+                        <button type="submit">Create Task</button>
+                    </form>
+                </div>
+                <table>
+                    <thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `);
+            document.getElementById('task-form').addEventListener('submit', createTask);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+    
+    async function loadPromotions() {
+        renderHTML('<p>Loading promotions...</p>');
+        try {
+            const promotions = await fetchData('/api/admin/promotions');
+            let tableRows = promotions.map(promo => `
+                <tr>
+                    <td>${promo.title || promo.link}</td>
+                    <td>${promo.type}</td>
+                    <td>${promo.budget}</td>
+                    <td>${promo.rewardPerUser}</td>
+                    <td>${promo.status}</td>
+                    <td><button class="action-btn ban-btn" onclick="deletePromotion('${promo.id}')">Delete</button></td>
+                </tr>
+            `).join('');
+            renderHTML(`
+                <table>
+                    <thead><tr><th>Title/Link</th><th>Type</th><th>Budget</th><th>Reward</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+    
+    async function loadSettings() {
+        renderHTML('<p>Loading settings...</p>');
+        try {
+            const settings = await fetchData('/api/admin/settings');
+            renderHTML(`
+                <div class="form-card">
+                    <h3>App Settings</h3>
+                    <form id="settings-form">
+                        <label>Referral Commission (%)</label>
+                        <input id="setting-ref-commission" type="number" value="${settings.referralCommission}" required>
+                        <label>Min Reward (Promotions)</label>
+                        <input id="setting-min-reward" type="number" value="${settings.minReward}" required>
+                        <label>Max Reward (Promotions)</label>
+                        <input id="setting-max-reward" type="number" value="${settings.maxReward}" required>
+                        <button type="submit">Save Settings</button>
+                    </form>
+                </div>
+            `);
+            document.getElementById('settings-form').addEventListener('submit', saveSettings);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+
+    function searchUsers(event) {
+        if (event.key === 'Enter') {
+            loadUsers(event.target.value);
+        }
+    }
+
+    async function updateUser(userId, action, value) {
+        try {
+            await fetch('/api/admin/users', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, action, value })
+            });
+            loadUsers(document.getElementById('user-search').value); 
+        } catch (error) { alert(`Error: ${error.message}`); }
+    }
+
+    function editPoints(userId) {
+        const pointsStr = prompt("Enter points to add (+) or subtract (-).\nFor example: 50 or -50");
+        if (pointsStr === null) return;
+        const points = Number(pointsStr);
+        if (isNaN(points)) { alert("Please enter a valid number."); return; }
+        updateUser(userId, 'update_points', points);
+    }
+
+    function toggleBan(userId, isCurrentlyBanned) {
+        if (confirm(`Are you sure you want to ${isCurrentlyBanned ? 'unban' : 'ban'} this user?`)) {
+            updateUser(userId, 'toggle_ban', null);
+        }
+    }
+
+    async function createTask(e) {
+        e.preventDefault();
+        const task = {
+            title: document.getElementById('task-title').value,
+            points: Number(document.getElementById('task-points').value),
+            taskType: document.getElementById('task-type').value,
+            url: document.getElementById('task-url').value,
+        };
+        try {
+            await fetch('/api/admin/tasks', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(task)
+            });
+            loadTasks();
+        } catch (e) { alert('Failed to create task.'); }
+    }
+
+    async function deleteTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        try {
+            await fetch(`/api/admin/tasks?taskId=${taskId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            loadTasks();
+        } catch (e) { alert('Failed to delete task.'); }
+    }
+
+    async function saveSettings(e) {
+        e.preventDefault();
+        const settings = {
+            referralCommission: document.getElementById('setting-ref-commission').value,
+            minReward: document.getElementById('setting-min-reward').value,
+            maxReward: document.getElementById('setting-max-reward').value,
+        };
+        try {
+            await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            alert('Settings saved successfully!');
+            loadSettings();
+        } catch (e) { alert('Failed to save settings.'); }
+    }
+
+    async function deletePromotion(promotionId) {
+        if (!confirm('Are you sure you want to delete this promotion?')) return;
+        try {
+            await fetch(`/api/admin/promotions?promotionId=${promotionId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            loadPromotions();
+        } catch (e) { alert('Failed to delete promotion.'); }
+    }
 </script>
 </body>
 </html>
