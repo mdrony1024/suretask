@@ -7,11 +7,10 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* --- আপনার দেওয়া সম্পূর্ণ CSS কোড এখানে থাকবে --- */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -20,17 +19,52 @@
         body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: var(--light-secondary-text); --border-color: var(--light-border); }
         body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: var(--dark-secondary-text); --border-color: var(--dark-border); }
         body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
+        a { text-decoration: none; color: inherit; }
+        .hidden { display: none !important; }
         .view { padding: 0 15px; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* ... (বাকি সব স্টাইল আগের মতোই) ... */
-        /* --- নতুন স্টাইল যোগ করা হয়েছে --- */
+        .header-bg { background: linear-gradient(90deg, #7f52ff, #d152ff); height: 120px; border-radius: 0 0 30px 30px; position: fixed; top: 0; left: 0; right: 0; z-index: -1; }
+        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; color: white; }
+        .top-header .title, .page-header .title { font-size: 20px; font-weight: 600; }
+        #theme-toggle-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; display:flex; align-items:center; justify-content:center; }
+        .profile-card { background: var(--card-bg-color); border-radius: 20px; padding: 20px; text-align: center; margin-top: 50px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .profile-pic { width: 80px; height: 80px; border-radius: 50%; margin: -60px auto 10px; border: 4px solid var(--card-bg-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #eee; position:relative; }
+        .profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-pic span { font-size: 32px; font-weight: bold; color: var(--accent-color); }
+        .username { font-size: 20px; font-weight: 600; }
+        .points { background-color: var(--accent-color); color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; font-size: 14px; margin-top: 5px; }
+        .action-button { width: 100%; padding: 12px; margin-top: 15px; background-color: var(--accent-color); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; }
+        .page-header { display: flex; align-items: center; padding: 15px; }
+        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
+        /* --- NEW LEADERBOARD STYLES --- */
+        #leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+        .leaderboard-item { display: flex; align-items: center; background-color: var(--card-bg-color); padding: 12px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .leaderboard-rank { font-weight: 600; font-size: 16px; width: 40px; text-align: center; color: var(--secondary-text-color); position: relative; }
+        .rank-icon { font-size: 20px; position: absolute; top: -12px; left: -12px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transform: rotate(-15deg); }
+        .leaderboard-item.rank-1 .rank-icon { background-color: var(--gold); color: white; }
+        .leaderboard-item.rank-2 .rank-icon { background-color: var(--silver); color: white; }
+        .leaderboard-item.rank-3 .rank-icon { background-color: var(--bronze); color: white; }
+        .leaderboard-pic { width: 50px; height: 50px; margin: 0 10px; border-radius: 50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; background-color:#eee; }
+        .leaderboard-pic img { width:100%; height:100%; object-fit:cover; }
+        .leaderboard-info { flex-grow: 1; min-width: 0; }
+        .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
+        .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
+        .leaderboard-stats .points, .leaderboard-stats .referrals { font-size: 13px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
+        .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
+        /* Profile Page Styles */
         #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
         .form-group { margin-top: 15px; text-align: left; }
         .form-group label { font-weight: 500; font-size: 14px; }
         .form-group input { width: 100%; padding: 10px; box-sizing: border-box; margin-top: 5px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
         .status-message { margin-top: 15px; font-weight: 500; }
-        .status-success { color: var(--success); } .status-error { color: var(--danger); }
-        /* ... (বাকি সব স্টাইল আগের মতোই) ... */
+        .status-success { color: var(--success); }
+        .status-error { color: var(--danger); }
+        /* --- NEW BOTTOM NAV --- */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; border-radius: 20px 20px 0 0; margin: 0 10px; }
+        .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
+        .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; transition: all 0.3s; }
+        .nav-item.active { color: var(--accent-color); }
+        .nav-item.active .icon { background-color: var(--accent-color); color: white; }
     </style>
 </head>
 <body class="light">
@@ -38,70 +72,271 @@
     <div id="app-container"></div>
     
     <nav class="bottom-nav">
-        <!-- ... (আপনার ন্যাভিগেশন বার আগের মতোই) ... -->
+        <div id="nav-home" class="nav-item active"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
+        <div id="nav-tasks" class="nav-item"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
+        <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
+        <div id="nav-referral" class="nav-item"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
+        <div id="nav-profile" class="nav-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
-
     <input type="file" id="photo-upload-input" class="hidden" accept="image/*">
 
-<script type="module">
-    // --- আপনার দেওয়া সম্পূর্ণ জাভাস্ক্রিপ্ট কোড এখানে থাকবে ---
-    // --- এবং এর সাথে নতুন ফিচারগুলোর জন্য অতিরিক্ত কোড যোগ করা হবে ---
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let db, storage, tg, currentUser = {}, userId;
 
-    // ... (initializeApp, runUserLogic, setupTheme, updateThemeIcon, setupNavigation) ...
-    // ... (এই ফাংশনগুলো আগের মতোই থাকবে) ...
+    async function initializeApp() {
+        try {
+            const response = await fetch('/api/config');
+            if (!response.ok) throw new Error('Config fetch failed');
+            const firebaseConfig = await response.json();
+            
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            storage = firebase.storage();
+            tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            userId = tg.initDataUnsafe?.user?.id || 'test_user';
 
+            tg.showAlert("Welcome! Please be aware of our terms and conditions.");
+            
+            setupTheme();
+            setupNavigation();
+            runUserLogic();
+        } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
+    }
+
+    function runUserLogic() {
+        const userRef = db.ref(`users/${userId}`);
+        userRef.on('value', (snapshot) => {
+            const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
+            const freshUsername = tg.initDataUnsafe?.user?.username || null;
+            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
+            
+            if (snapshot.exists()) {
+                currentUser = snapshot.val();
+                const updates = {};
+                if (!currentUser.customName && currentUser.name !== freshName) updates.name = freshName;
+                if (currentUser.username !== freshUsername) updates.username = freshUsername;
+                if (!currentUser.initialPhotoUrl && freshPhotoUrl) updates.initialPhotoUrl = freshPhotoUrl;
+                if (Object.keys(updates).length > 0) userRef.update(updates);
+            } else {
+                const referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
+                userRef.set(currentUser);
+            }
+            const activeNav = document.querySelector('.nav-item.active');
+            if (activeNav) renderView(activeNav.id.split('-')[1]);
+        });
+    }
+
+    function setupTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.className = savedTheme;
+    }
+    
+    function updateThemeIcon() {
+        const themeIcon = document.querySelector('#theme-toggle-icon');
+        if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
+    }
+
+    function setupNavigation() {
+        document.querySelectorAll('.nav-item[id]').forEach(item => {
+            item.addEventListener('click', (e) => renderView(e.currentTarget.id.split('-')[1]));
+        });
+        renderView('home');
+    }
+    
     function renderView(viewName) {
-        // ... (আগের মতোই থাকবে, শুধু referral এবং profile এর জন্য case যোগ হবে) ...
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`nav-${viewName}`)?.classList.add('active');
+        const container = document.getElementById('app-container');
+        container.innerHTML = '';
+        
         switch(viewName) {
             case 'home': renderHomePage(container); break;
-            case 'tasks': /* ... */ break;
+            case 'leaderboard': renderLeaderboardPage(container); break;
+            case 'tasks': window.location.href = '/tasks.html'; break;
             case 'referral': renderReferralPage(container); break;
             case 'profile': renderProfilePage(container); break;
-            // ...
+            default: container.innerHTML = `<div class="header-bg"></div><div class="top-header"><h1 class="title">${viewName.charAt(0).toUpperCase() + viewName.slice(1)}</h1></div><div class="view" style="margin-top:20px;"><p>This section is coming soon.</p></div>`; break;
         }
     }
 
-    // ... (renderHomePage, renderLeaderboardPage) ...
+    function renderHomePage(container) {
+        container.innerHTML = `
+            <div class="header-bg"></div>
+            <div class="top-header">
+                <h1 class="title">SureTask</h1>
+                <button id="theme-toggle-btn"><i id="theme-toggle-icon"></i></button>
+            </div>
+            <div id="home-view" class="view">
+                <div class="profile-card">
+                    <div id="home-profile-pic" class="profile-pic"></div>
+                    <h2 class="username">${currentUser.customName || currentUser.name || 'Loading...'}</h2>
+                    <div class="points">${currentUser.points || 0} Points</div>
+                    <button id="leaderboard-btn" class="action-button">🏆 Go to Leaderboard</button>
+                </div>
+            </div>`;
+        
+        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
+        document.getElementById('leaderboard-btn').addEventListener('click', () => renderView('leaderboard'));
+        
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        themeToggleBtn.addEventListener('click', () => {
+            let newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
+            document.body.className = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon();
+        });
+        updateThemeIcon();
+    }
+
+    function renderLeaderboardPage(container) {
+        container.innerHTML = `
+            <div class="page-header">
+                <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
+                <h1 class="title">Leaderboard</h1>
+            </div>
+            <div id="leaderboard-list" class="view">Loading...</div>`;
+        
+        document.getElementById('back-btn').addEventListener('click', () => renderView('home'));
+
+        db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
+            const list = document.getElementById('leaderboard-list');
+            if (!snapshot.exists()) { list.innerHTML = 'Leaderboard is empty.'; return; }
+            
+            const users = [];
+            snapshot.forEach(child => { users.push(child.val()); });
+            users.sort((a, b) => (b.points || 0) - (a.points || 0));
+            list.innerHTML = '';
+            
+            users.forEach((user, index) => {
+                const rank = index + 1;
+                const item = document.createElement('div');
+                item.className = `leaderboard-item rank-${rank}`;
+                const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
+                let rankDisplay = `#${rank}`;
+                if(rank <= 3) {
+                    const iconClass = rank === 1 ? 'bxs-crown' : (rank === 2 ? 'bxs-shield-alt-2' : 'bxs-star');
+                    rankDisplay = `<div class="rank-icon"><i class='bx ${iconClass}'></i></div>`;
+                }
+
+                item.innerHTML = `
+                    <div class="leaderboard-rank">${rankDisplay}</div>
+                    <a href="${profileLink}" target="_blank" style="display:contents;">
+                        <div id="leaderboard-pic-${user.id}" class="leaderboard-pic"></div>
+                        <div class="leaderboard-info">
+                            <div class="name">${user.customName || user.name || 'User'}</div>
+                            <div class="leaderboard-stats">
+                                <div class="points">${user.points || 0} Points</div>
+                                <div class="referrals"><i class='bx bxs-user-plus'></i><span>${user.referrals || 0}</span></div>
+                            </div>
+                        </div>
+                    </a>`;
+                list.appendChild(item);
+                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl || user.initialPhotoUrl);
+            });
+        });
+    }
 
     function renderReferralPage(container) {
-        // ... (আপনার দেখানো ছবির মতো করে রেফারেল পেজ তৈরির কোড) ...
+        const referralLink = `https://t.me/suretaskbot?start=${currentUser.referralCode || ''}`;
+        container.innerHTML = `<div class="top-header" style="color:var(--text-color);"><h1 class="title">Refer Friends</h1></div>
+            <div class="view"><div class="profile-card" style="margin-top: 10px;">
+                <h2>Invite & Earn</h2><p>Share your link and earn rewards!</p>
+                <input type="text" id="referral-link" value="${referralLink}" readonly>
+                <button id="share-link-btn" class="action-button">Share Link</button>
+            </div></div>`;
+        
+        document.getElementById('share-link-btn').addEventListener('click', () => {
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=Join%20SureTask%20and%20earn%20rewards!`);
+        });
     }
 
     function renderProfilePage(container) {
-        // ... (প্রোফাইল পেজ তৈরির কোড, যেখানে ছবি আপলোড ও নাম পরিবর্তনের অপশন থাকবে) ...
+        container.innerHTML = `
+            <div class="top-header" style="color:var(--text-color);"><h1 class="title">Edit Profile</h1></div>
+            <div class="view"><div class="profile-card" style="margin-top: 10px;">
+                <div id="profile-page-pic" class="profile-pic" style="margin-top:0;">
+                     <div id="profile-pic-upload"><i class='bx bxs-camera'></i></div>
+                </div>
+                <div class="form-group">
+                    <label for="username-input">Display Name</label>
+                    <input type="text" id="username-input" value="${currentUser.customName || currentUser.name || ''}" placeholder="Enter your name">
+                </div>
+                <button id="save-profile-btn" class="action-button">Save Changes</button>
+                <p id="profile-status" class="status-message"></p>
+            </div></div>`;
+        
+        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
+        
+        document.getElementById('profile-pic-upload').addEventListener('click', () => {
+            document.getElementById('photo-upload-input').click();
+        });
+        
+        document.getElementById('photo-upload-input').addEventListener('change', handlePhotoUpload);
+        document.getElementById('save-profile-btn').addEventListener('click', saveProfileChanges);
     }
-
-    async function handlePhotoUpload(event) {
+    
+    function handlePhotoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
+        const statusEl = document.getElementById('profile-status');
+        statusEl.textContent = 'Uploading...'; statusEl.className = 'status-message';
+        
+        const storageRef = storage.ref(`profile_pictures/${userId}`);
+        storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(downloadURL => {
+            db.ref(`users/${userId}/profilePhotoUrl`).set(downloadURL);
+            statusEl.textContent = 'Photo updated!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Upload failed.'; statusEl.className = 'status-message status-error';
+        });
+    }
+    
+    function saveProfileChanges() {
+        const newName = document.getElementById('username-input').value.trim();
+        const statusEl = document.getElementById('profile-status');
+        if (!newName) { statusEl.textContent = 'Name cannot be empty.'; statusEl.className = 'status-message status-error'; return; }
+        statusEl.textContent = 'Saving...';
+        db.ref(`users/${userId}/customName`).set(newName).then(() => {
+            statusEl.textContent = 'Profile saved!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Failed to save.'; statusEl.className = 'status-message status-error';
+        });
+    }
 
-        const formData = new FormData();
-        formData.append('userId', userId);
-        formData.append('photo', file);
-
-        try {
-            const response = await fetch('/api/update-profile', {
-                method: 'POST',
-                body: formData,
-            });
-            const result = await response.json();
-            // ... (সফল বা ব্যর্থ হওয়ার মেসেজ দেখানোর কোড) ...
-        } catch (error) {
-            // ... (এরর মেসেজ দেখানোর কোড) ...
+    function renderProfilePic(container, name, photoUrl) {
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                container.style.backgroundColor = generateColor(name);
+                container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            container.style.backgroundColor = generateColor(name);
+            container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
         }
     }
 
-    async function saveProfileChanges() {
-        const newName = document.getElementById('username-input').value.trim();
-        const formData = new FormData();
-        formData.append('userId', userId);
-        formData.append('customName', newName);
-        // ... (একইভাবে /api/update-profile এ কল করা হবে) ...
+    function generateColor(str) {
+        let hash = 0;
+        for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
     }
 
-    // ... (বাকি সব ফাংশন আগের মতোই থাকবে) ...
-    
     initializeApp();
+});
 </script>
 </body>
 </html>
