@@ -7,6 +7,8 @@ try {
   }
 } catch (e) { /* Error handling */ }
 
+// --- নতুন নিরাপত্তা চেক ---
+// এই ফাংশনটি এখন Admin Claim এর পরিবর্তে ইমেইল চেক করবে
 exports.checkAdmin = async (req) => {
     if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
         return false;
@@ -14,7 +16,8 @@ exports.checkAdmin = async (req) => {
     const idToken = req.headers.authorization.split('Bearer ')[1];
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
-        return decodedToken.admin === true;
+        // Vercel-এ সেট করা ADMIN_EMAIL এর সাথে টোকেনের ইমেইল মেলানো হচ্ছে
+        return decodedToken.email === process.env.ADMIN_EMAIL;
     } catch (error) {
         return false;
     }
