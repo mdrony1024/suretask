@@ -2,31 +2,33 @@ const admin = require('firebase-admin');
 
 // --- Firebase Admin SDK চালু করা ---
 try {
+  // শুধুমাত্র যদি Firebase চালু না থাকে, তাহলেই চালু করা হবে
   if (!admin.apps.length) {
+    // Vercel-এর Environment Variable থেকে সম্পূর্ণ কনফিগারেশনটি নেওয়া হচ্ছে
+    const serviceAccountString = process.env.FIREBASE_ADMIN_CONFIG;
+
+    if (!serviceAccountString) {
+      throw new Error('The FIREBASE_ADMIN_CONFIG environment variable is not set.');
+    }
+
+    // JSON স্ট্রিং-কে অবজেক্টে পরিণত করা হচ্ছে
+    const serviceAccount = JSON.parse(serviceAccountString);
+
     admin.initializeApp({
-      credential: admin.credential.cert({
-        "type": process.env.FIREBASE_TYPE,
-        "project_id": process.env.FIREBASE_PROJECT_ID,
-        "private_key_id": process.env.FIREBASE_PRIVATE_KEY_ID,
-        "private_key": (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-        "client_email": process.env.FIREBASE_CLIENT_EMAIL,
-        "client_id": process.env.FIREBASE_CLIENT_ID,
-        "auth_uri": process.env.FIREBASE_AUTH_URI,
-        "token_uri": process.env.FIREBASE_TOKEN_URI,
-        "auth_provider_x509_cert_url": process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-        "client_x509_cert_url": process.env.FIREBASE_CLIENT_X509_CERT_URL
-      })
+      credential: admin.credential.cert(serviceAccount)
     });
   }
 } catch (e) {
-  console.error('Firebase admin initialization error', e.stack);
+  // যদি Firebase চালু হতে কোনো সমস্যা হয়, তাহলে Vercel Logs-এ এরর দেখানো হবে
+  console.error('Firebase admin initialization error:', e);
 }
 
-// Firestore এর ইনস্ট্যান্স নিন
+// Firestore এর ইনস্ট্যান্স নেওয়া হচ্ছে
 const firestore = admin.firestore();
 
-// --- বট এর মূল লজিক ---
+// --- বট এর মূল লজিক (Webhook Handler) ---
 module.exports = async (req, res) => {
+  // শুধু POST রিকোয়েস্ট গ্রহণ করা হবে
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
@@ -34,6 +36,7 @@ module.exports = async (req, res) => {
   try {
     const { message } = req.body;
 
+    // যদি মেসেজ না থাকে অথবা /start দিয়ে শুরু না হয়, তাহলে কিছু না করে বেরিয়ে যাবে
     if (!message || !message.text || !message.text.startsWith('/start')) {
       return res.status(200).send('OK');
     }
@@ -42,7 +45,7 @@ module.exports = async (req, res) => {
     const userDocRef = firestore.collection('users').doc(newUserId);
     const userDoc = await userDocRef.get();
 
-    // শুধুমাত্র নতুন ব্যবহারকারীদের জন্য রেফারেল কাজ করবে
+    // শুধুমাত্র নতুন ব্যবহারকারীদের জন্য রেফারেল লজিক কাজ করবে
     if (!userDoc.exists) {
       const parts = message.text.split(' ');
       
@@ -53,17 +56,16 @@ module.exports = async (req, res) => {
         points: 0,
         referralCount: 0,
         referralEarnings: 0,
-        createdAt: admin.firestore.FieldValue.serverTimestamp() // Firestore এর জন্য সঠিক টাইমস্ট্যাম্প
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       };
 
-      // যদি রেফারেল কোড থাকে
+      // যদি রেফারেল কোড থাকে (যেমন: /start 12345)
       if (parts.length > 1 && parts[1]) {
         const referrerId = parts[1];
         newUserProfile.referredBy = referrerId;
 
         // যিনি রেফার করেছেন, তার referralCount ১ বাড়িয়ে দেওয়া
         const referrerDocRef = firestore.collection('users').doc(referrerId);
-        // Firestore এর নিজস্ব increment পদ্ধতি ব্যবহার করা হয়েছে
         await referrerDocRef.update({
           referralCount: admin.firestore.FieldValue.increment(1)
         });
@@ -73,8 +75,10 @@ module.exports = async (req, res) => {
       await userDocRef.set(newUserProfile);
     }
   } catch (error) {
-    console.error('Error processing webhook:', error.message);
+    // যদি কোড চলতে কোনো সমস্যা হয়, Vercel Logs-এ বিস্তারিত এরর দেখানো হবে
+    console.error('Error processing webhook:', error.message, error.stack);
   }
   
+  // টেলিগ্রামকে জানানো যে রিকোয়েস্ট সফল হয়েছে
   res.status(200).send('OK');
-};
+};```
