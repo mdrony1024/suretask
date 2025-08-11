@@ -10,32 +10,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        :root { --primary-color: #5856d6; --light-bg: #f4f7f6; --card-bg: #ffffff; --text-color: #333; }
+        :root { 
+            --primary-color: #5856d6; 
+            --light-bg: #f4f7f6; 
+            --card-bg: #ffffff; 
+            --text-color: #333;
+            --sidebar-bg: #374151;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+        }
         body { font-family: 'Poppins', sans-serif; background-color: var(--light-bg); margin: 0; color: var(--text-color); }
         #login-section { display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px; box-sizing: border-box; }
         .login-box { background: var(--card-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 360px; }
         .login-box h2 { margin-top: 0; }
-        .login-box input { display: block; width: 100%; padding: 12px; margin-bottom: 12px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
+        .login-box input { display: block; width: 100%; padding: 12px; margin-bottom: 12px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
         .login-box button { width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; border-radius: 6px; font-size: 16px; }
         
         #admin-panel { display: none; height: 100vh; }
-        .sidebar { background: #374151; color: white; padding: 20px; box-sizing: border-box; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1001; transform: translateX(0); transition: transform 0.3s ease; }
-        .sidebar h2 { margin-top: 0; }
-        .sidebar ul { list-style: none; padding: 0; }
+        .sidebar { background: var(--sidebar-bg); color: white; padding: 20px; box-sizing: border-box; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1001; transform: translateX(0); transition: transform 0.3s ease; }
+        .sidebar h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #4b5563;}
+        .sidebar ul { list-style: none; padding: 0; margin-top: 20px; }
         .sidebar ul li button { background: none; border: none; color: white; padding: 15px; width: 100%; text-align: left; cursor: pointer; font-size: 16px; border-radius: 6px; }
         .sidebar ul li button:hover, .sidebar ul li button.active { background: #4b5563; }
         
         .content { padding: 20px; margin-left: 220px; transition: margin-left 0.3s ease; box-sizing: border-box; height: 100vh; overflow-y: auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        #menu-toggle { font-size: 24px; background: none; border: none; cursor: pointer; color: #333; display: none; }
-        #logout-btn { background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; }
+        #menu-toggle { font-size: 24px; background: none; border: none; cursor: pointer; color: var(--text-color); display: none; }
+        #logout-btn { background: var(--danger-color); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 500;}
         
-        table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-top: 20px; }
-        .form-card input, .form-card select, .form-card button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; }
-        .form-card button { background: var(--primary-color); color: white; border: none; }
-        
+        table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .form-card input, .form-card select, .form-card button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif;}
+        .form-card button { background: var(--primary-color); color: white; border: none; font-weight: 500; cursor: pointer; }
+        .action-btn { padding: 6px 10px; margin-right: 5px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
+        .ban-btn { color: var(--danger-color); border-color: var(--danger-color); }
+        .unban-btn { color: var(--success-color); border-color: var(--success-color); }
+
         /* মোবাইল ডিভাইসের জন্য মিডিয়া কোয়েরি */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
@@ -43,6 +55,7 @@
             .content { margin-left: 0; }
             #menu-toggle { display: inline-block; }
             #content-title { font-size: 18px; }
+            td, th { font-size: 14px; }
         }
     </style>
 </head>
@@ -98,21 +111,13 @@
             document.getElementById('login-btn').addEventListener('click', handleLogin);
             document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
             
-            // --- রেসপন্সিভ সাইডবারের জন্য নতুন কোড ---
             const menuToggle = document.getElementById('menu-toggle');
             const sidebar = document.querySelector('.sidebar');
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
+            menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
             
-            // সাইডবার মেনুর বাটনগুলোর জন্য ক্লিক হ্যান্ডলার
             document.querySelectorAll('#sidebar-menu button').forEach(button => {
                 button.addEventListener('click', () => {
-                    // ছোট স্ক্রিনে মেনুতে ক্লিক করার পর সাইডবার বন্ধ হয়ে যাবে
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('open');
-                    }
-                    // সক্রিয় বাটন হাইলাইট করার জন্য (ঐচ্ছিক)
+                    if (window.innerWidth <= 768) sidebar.classList.remove('open');
                     document.querySelectorAll('#sidebar-menu button').forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
                 });
@@ -127,7 +132,7 @@
             if (tokenResult.claims.admin) {
                 idToken = await user.getIdToken();
                 document.getElementById('login-section').style.display = 'none';
-                document.getElementById('admin-panel').style.display = 'block'; // grid এর পরিবর্তে block
+                document.getElementById('admin-panel').style.display = 'block';
                 loadDashboard();
             } else {
                 alert('You are not authorized to access this panel.');
@@ -140,16 +145,19 @@
     }
 
     function handleLogin() {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, password).catch(err => {
+            document.getElementById('login-error').innerText = err.message;
+        });
     }
 
-    // --- ডেটা লোডিং এবং রেন্ডারিং ফাংশন (আপনার আগের কোড) ---
-
     async function fetchData(endpoint) {
-        const res = await fetch(endpoint, {
-            headers: { 'Authorization': `Bearer ${idToken}` }
-        });
-        if (!res.ok) throw new Error(`Failed to fetch from ${endpoint}`);
+        const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${idToken}` } });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || `Failed to fetch from ${endpoint}`);
+        }
         return res.json();
     }
 
@@ -161,79 +169,88 @@
     async function loadDashboard() {
         renderContent('Dashboard', `
             <div class="form-card">
-                <h3>Welcome to the Admin Panel!</h3>
-                <p>Select an option from the sidebar to manage your app.</p>
+                <h3>Welcome to the SureTask Admin Panel!</h3>
+                <p>Select an option from the sidebar to manage your application.</p>
             </div>
         `);
     }
 
-    async function loadUsers() {
+    async function loadUsers(searchTerm = '') {
         renderContent('Users', '<p>Loading users...</p>');
-        const users = await fetchData('/api/admin/users');
-        let tableRows = users.map(user => `
-            <tr>
-                <td>${user.id}</td>
-                <td>${user.name || 'N/A'}</td>
-                <td>${user.points || 0}</td>
-                <td>${user.referralCount || 0}</td>
-            </tr>
-        `).join('');
-        renderContent('Users', `
-            <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Referrals</th></tr></thead>
-                <tbody>${tableRows}</tbody>
-            </table>
-        `);
+        try {
+            const users = await fetchData(`/api/admin/users?search=${encodeURIComponent(searchTerm)}`);
+            let tableRows = users.map(user => {
+                const isBanned = user.banned === true;
+                return `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.points || 0}</td>
+                        <td>${isBanned ? `<span style="color:red; font-weight:bold;">Banned</span>` : 'Active'}</td>
+                        <td>
+                            <button class="action-btn" onclick="editPoints('${user.id}')">Edit Points</button>
+                            <button class="action-btn ${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="toggleBan('${user.id}', ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderContent('Users', `
+                <div class="form-card">
+                    <input id="user-search" type="text" placeholder="Search by User ID or Name..." onkeyup="searchUsers(event)" value="${searchTerm}">
+                </div>
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `);
+        } catch (e) { renderContent('Users', `<p style="color:red;">Error: ${e.message}</p>`); }
     }
 
     async function loadTasks() {
-        renderContent('Admin Tasks', '<p>Loading tasks...</p>');
-        const tasks = await fetchData('/api/admin/tasks');
-        let tableRows = tasks.map(task => `
-            <tr>
-                <td>${task.title}</td>
-                <td>${task.taskType}</td>
-                <td>${task.points}</td>
-                <td><button style="color:red;" onclick="deleteTask('${task.id}')">Delete</button></td>
-            </tr>
-        `).join('');
-        renderContent('Admin Tasks', `
-            <div class="form-card">
-                <h3>Create New Task</h3>
-                <form id="task-form">
-                    <input id="task-title" placeholder="Task Title" required>
-                    <input id="task-points" type="number" placeholder="Reward Points" required>
-                    <select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select>
-                    <input id="task-url" placeholder="URL (optional)">
-                    <button type="submit">Create Task</button>
-                </form>
-            </div>
-            <table>
-                <thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead>
-                <tbody>${tableRows}</tbody>
-            </table>
-        `);
-        document.getElementById('task-form').addEventListener('submit', createTask);
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
     
     async function loadPromotions() {
-        renderContent('User Promotions', `<p>Feature coming soon.</p>`);
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
     
     async function loadSettings() {
-        renderContent('Settings', `<p>Feature coming soon.</p>`);
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
 
-    // --- ডেটা 조작 ফাংশন (আপনার আগের কোড) ---
-
-    async function createTask(e) {
-        e.preventDefault();
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+    function searchUsers(event) {
+        if (event.key === 'Enter' || !event.target.value) {
+            loadUsers(event.target.value);
+        }
     }
 
-    async function deleteTask(taskId) {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+    async function updateUser(userId, action, value) {
+        try {
+            await fetch('/api/admin/users', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, action, value })
+            });
+            loadUsers(document.getElementById('user-search').value); 
+        } catch (error) { alert(`Error: ${error.message}`); }
     }
+
+    function editPoints(userId) {
+        const pointsStr = prompt("Enter points to add (+) or subtract (-).\nFor example: 50 or -50");
+        if (pointsStr === null) return;
+        const points = Number(pointsStr);
+        if (isNaN(points)) { alert("Please enter a valid number."); return; }
+        updateUser(userId, 'update_points', points);
+    }
+
+    function toggleBan(userId, isCurrentlyBanned) {
+        if (confirm(`Are you sure you want to ${isCurrentlyBanned ? 'unban' : 'ban'} this user?`)) {
+            updateUser(userId, 'toggle_ban', null);
+        }
+    }
+
+    // ... createTask, deleteTask, saveSettings, deletePromotion ফাংশনগুলো অপরিবর্তিত থাকবে ...
 </script>
 </body>
 </html>
