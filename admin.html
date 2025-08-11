@@ -12,63 +12,68 @@
     <style>
         :root { --primary-color: #5856d6; --light-bg: #f4f7f6; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: 'Poppins', sans-serif; background-color: var(--light-bg); margin: 0; color: var(--text-color); }
-        #login-section { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-box { background: var(--card-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 320px; }
+        #login-section { display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .login-box { background: var(--card-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 360px; }
         .login-box h2 { margin-top: 0; }
         .login-box input { display: block; width: 100%; padding: 12px; margin-bottom: 12px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
         .login-box button { width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; border-radius: 6px; font-size: 16px; }
         
-        /* --- নতুন রেসপন্সিভ ডিজাইন --- */
-        #admin-panel { display: none; height: 100vh; overflow: hidden; }
-        .sidebar { background: #374151; color: white; padding: 20px; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; transform: translateX(0); transition: transform 0.3s ease-in-out; }
-        .sidebar.closed { transform: translateX(-100%); }
+        #admin-panel { display: none; height: 100vh; }
+        .sidebar { background: #374151; color: white; padding: 20px; box-sizing: border-box; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1001; transform: translateX(0); transition: transform 0.3s ease; }
         .sidebar h2 { margin-top: 0; }
         .sidebar ul { list-style: none; padding: 0; }
         .sidebar ul li button { background: none; border: none; color: white; padding: 15px; width: 100%; text-align: left; cursor: pointer; font-size: 16px; border-radius: 6px; }
-        .sidebar ul li button:hover { background: #4b5563; }
+        .sidebar ul li button:hover, .sidebar ul li button.active { background: #4b5563; }
         
-        .content { padding: 20px; overflow-y: auto; margin-left: 220px; transition: margin-left 0.3s ease-in-out; height: 100vh; box-sizing: border-box;}
+        .content { padding: 20px; margin-left: 220px; transition: margin-left 0.3s ease; box-sizing: border-box; height: 100vh; overflow-y: auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        #menu-toggle { font-size: 24px; background: none; border: none; cursor: pointer; display: none; }
+        #menu-toggle { font-size: 24px; background: none; border: none; cursor: pointer; color: #333; display: none; }
         #logout-btn { background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; }
+        
         table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
         .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-top: 20px; }
         .form-card input, .form-card select, .form-card button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; }
         .form-card button { background: var(--primary-color); color: white; border: none; }
-
+        
         /* মোবাইল ডিভাইসের জন্য মিডিয়া কোয়েরি */
         @media (max-width: 768px) {
-            #admin-panel { grid-template-columns: 1fr; }
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .content { margin-left: 0; }
-            #menu-toggle { display: block; }
+            #menu-toggle { display: inline-block; }
+            #content-title { font-size: 18px; }
         }
     </style>
 </head>
 <body>
 
     <section id="login-section">
-        <!-- ... আপনার লগইন বক্সের HTML অপরিবর্তিত ... -->
+        <div class="login-box">
+            <h2>Admin Panel Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn">Login</button>
+            <p id="login-error" style="color:red;"></p>
+        </div>
     </section>
 
     <section id="admin-panel">
-        <nav id="sidebar" class="sidebar">
+        <nav class="sidebar">
             <h2>SureTask</h2>
-            <ul>
-                <li><button onclick="loadContent('Dashboard', loadDashboard)">Dashboard</button></li>
-                <li><button onclick="loadContent('Users', loadUsers)">Users</button></li>
-                <li><button onclick="loadContent('Admin Tasks', loadTasks)">Admin Tasks</button></li>
-                <li><button onclick="loadContent('User Promotions', loadPromotions)">User Promotions</button></li>
-                <li><button onclick="loadContent('Settings', loadSettings)">Settings</button></li>
+            <ul id="sidebar-menu">
+                <li><button onclick="loadDashboard()">Dashboard</button></li>
+                <li><button onclick="loadUsers()">Users</button></li>
+                <li><button onclick="loadTasks()">Admin Tasks</button></li>
+                <li><button onclick="loadPromotions()">User Promotions</button></li>
+                <li><button onclick="loadSettings()">Settings</button></li>
             </ul>
         </nav>
-        <main id="main-content" class="content">
+        <main class="content">
             <header>
                 <div>
                     <button id="menu-toggle"><i class='bx bx-menu'></i></button>
-                    <h1 id="content-title" style="display: inline-block; margin-left: 15px;">Dashboard</h1>
+                    <h1 id="content-title" style="display: inline-block; margin-left: 10px; vertical-align: middle;">Dashboard</h1>
                 </div>
                 <button id="logout-btn">Logout</button>
             </header>
@@ -81,64 +86,154 @@
 <script>
     let firebaseApp, auth, firestoreDb, idToken;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // ... আপনার আগের Firebase init এবং Auth কোড অপরিবর্তিত থাকবে ...
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await fetch('/api/config');
+            const firebaseConfig = await response.json();
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            firestoreDb = firebase.firestore();
+            
+            auth.onAuthStateChanged(handleAuthState);
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+            
+            // --- রেসপন্সিভ সাইডবারের জন্য নতুন কোড ---
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+            
+            // সাইডবার মেনুর বাটনগুলোর জন্য ক্লিক হ্যান্ডলার
+            document.querySelectorAll('#sidebar-menu button').forEach(button => {
+                button.addEventListener('click', () => {
+                    // ছোট স্ক্রিনে মেনুতে ক্লিক করার পর সাইডবার বন্ধ হয়ে যাবে
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('open');
+                    }
+                    // সক্রিয় বাটন হাইলাইট করার জন্য (ঐচ্ছিক)
+                    document.querySelectorAll('#sidebar-menu button').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                });
+            });
 
-        // মেনু টগল বাটন
-        const menuToggle = document.getElementById('menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
+        } catch (e) { document.body.innerHTML = 'Failed to load app configuration.'; }
     });
 
-    // ... handleAuthState এবং handleLogin ফাংশন অপরিবর্তিত থাকবে ...
-
-    // --- নতুন কন্টেন্ট লোডিং ফাংশন ---
-    function loadContent(title, loaderFunction) {
-        document.getElementById('content-title').innerText = title;
-        loaderFunction(); // আসল ডেটা লোডিং ফাংশন কল করা হচ্ছে
-        // ছোট স্ক্রিনে মেনুতে ক্লিক করার পর সাইডবার বন্ধ হয়ে যাবে
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('open');
+    async function handleAuthState(user) {
+        if (user) {
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.admin) {
+                idToken = await user.getIdToken();
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block'; // grid এর পরিবর্তে block
+                loadDashboard();
+            } else {
+                alert('You are not authorized to access this panel.');
+                auth.signOut();
+            }
+        } else {
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('admin-panel').style.display = 'none';
         }
     }
-    
-    // --- ডেটা লোডিং এবং রেন্ডারিং ফাংশন ---
 
-    function renderHTML(html) {
+    function handleLogin() {
+        // ... এই ফাংশনটি অপরিবর্তিত ...
+    }
+
+    // --- ডেটা লোডিং এবং রেন্ডারিং ফাংশন (আপনার আগের কোড) ---
+
+    async function fetchData(endpoint) {
+        const res = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch from ${endpoint}`);
+        return res.json();
+    }
+
+    function renderContent(title, html) {
+        document.getElementById('content-title').innerText = title;
         document.getElementById('admin-content').innerHTML = html;
     }
-    
+
     async function loadDashboard() {
-        renderHTML(`<div class="form-card"><h3>Welcome, Admin!</h3></div>`);
+        renderContent('Dashboard', `
+            <div class="form-card">
+                <h3>Welcome to the Admin Panel!</h3>
+                <p>Select an option from the sidebar to manage your app.</p>
+            </div>
+        `);
     }
 
     async function loadUsers() {
-        renderHTML(`<p>Loading users...</p>`);
+        renderContent('Users', '<p>Loading users...</p>');
         const users = await fetchData('/api/admin/users');
-        // ... ইউজার টেবিল রেন্ডার করার বাকি কোড ...
+        let tableRows = users.map(user => `
+            <tr>
+                <td>${user.id}</td>
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.points || 0}</td>
+                <td>${user.referralCount || 0}</td>
+            </tr>
+        `).join('');
+        renderContent('Users', `
+            <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Referrals</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        `);
     }
 
     async function loadTasks() {
-        renderHTML(`<p>Loading tasks...</p>`);
+        renderContent('Admin Tasks', '<p>Loading tasks...</p>');
         const tasks = await fetchData('/api/admin/tasks');
-        // ... টাস্ক টেবিল এবং ফর্ম রেন্ডার করার বাকি কোড ...
+        let tableRows = tasks.map(task => `
+            <tr>
+                <td>${task.title}</td>
+                <td>${task.taskType}</td>
+                <td>${task.points}</td>
+                <td><button style="color:red;" onclick="deleteTask('${task.id}')">Delete</button></td>
+            </tr>
+        `).join('');
+        renderContent('Admin Tasks', `
+            <div class="form-card">
+                <h3>Create New Task</h3>
+                <form id="task-form">
+                    <input id="task-title" placeholder="Task Title" required>
+                    <input id="task-points" type="number" placeholder="Reward Points" required>
+                    <select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select>
+                    <input id="task-url" placeholder="URL (optional)">
+                    <button type="submit">Create Task</button>
+                </form>
+            </div>
+            <table>
+                <thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        `);
+        document.getElementById('task-form').addEventListener('submit', createTask);
     }
-
+    
     async function loadPromotions() {
-        renderHTML(`<p>Loading user promotions...</p>`);
-        const promotions = await fetchData('/api/admin/promotions'); // <-- নতুন API এন্ডপয়েন্ট
-        // ... প্রোমোশন টেবিল রেন্ডার করার কোড ...
+        renderContent('User Promotions', `<p>Feature coming soon.</p>`);
     }
     
     async function loadSettings() {
-        renderHTML(`<p>Loading settings...</p>`);
-        const settings = await fetchData('/api/admin/settings'); // <-- নতুন API এন্ডপয়েন্ট
-        // ... সেটিংস ফর্ম রেন্ডার করার কোড ...
+        renderContent('Settings', `<p>Feature coming soon.</p>`);
     }
 
-    // ... fetchData, createTask, deleteTask এবং অন্যান্য ফাংশন অপরিবর্তিত থাকবে ...
+    // --- ডেটা 조작 ফাংশন (আপনার আগের কোড) ---
+
+    async function createTask(e) {
+        e.preventDefault();
+        // ... এই ফাংশনটি অপরিবর্তিত ...
+    }
+
+    async function deleteTask(taskId) {
+        // ... এই ফাংশনটি অপরিবর্তিত ...
+    }
 </script>
 </body>
 </html>
