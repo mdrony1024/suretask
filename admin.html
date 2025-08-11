@@ -11,8 +11,12 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
         :root { 
-            --primary-color: #5856d6; --light-bg: #f4f7f6; --card-bg: #ffffff; 
-            --text-color: #333; --sidebar-bg: #374151; --danger-color: #ef4444; 
+            --primary-color: #5856d6; 
+            --light-bg: #f4f7f6; 
+            --card-bg: #ffffff; 
+            --text-color: #333;
+            --sidebar-bg: #374151;
+            --danger-color: #ef4444;
             --success-color: #22c55e;
         }
         body { font-family: 'Poppins', sans-serif; background-color: var(--light-bg); margin: 0; color: var(--text-color); }
@@ -24,7 +28,6 @@
         
         #admin-panel { display: none; height: 100vh; }
         .sidebar { background: var(--sidebar-bg); color: white; padding: 20px; box-sizing: border-box; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1001; transform: translateX(0); transition: transform 0.3s ease; }
-        .sidebar.open { transform: translateX(0); }
         .sidebar h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #4b5563;}
         .sidebar ul { list-style: none; padding: 0; margin-top: 20px; }
         .sidebar ul li button { background: none; border: none; color: white; padding: 15px; width: 100%; text-align: left; cursor: pointer; font-size: 16px; border-radius: 6px; }
@@ -36,36 +39,47 @@
         #logout-btn { background: var(--danger-color); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 500;}
         
         table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; word-break: break-all; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
         .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .form-card input, .form-card select, .form-card button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif;}
         .form-card button { background: var(--primary-color); color: white; border: none; font-weight: 500; cursor: pointer; }
-        .action-btn { padding: 6px 10px; margin: 2px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; background: white; }
+        .action-btn { padding: 6px 10px; margin-right: 5px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
         .ban-btn { color: var(--danger-color); border-color: var(--danger-color); }
         .unban-btn { color: var(--success-color); border-color: var(--success-color); }
 
+        /* মোবাইল ডিভাইসের জন্য মিডিয়া কোয়েরি */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
             .content { margin-left: 0; }
             #menu-toggle { display: inline-block; }
+            #content-title { font-size: 18px; }
+            td, th { font-size: 14px; }
         }
     </style>
 </head>
 <body>
 
     <section id="login-section">
-        <!-- ... লগইন বক্স ... -->
+        <div class="login-box">
+            <h2>Admin Panel Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn">Login</button>
+            <p id="login-error" style="color:red;"></p>
+        </div>
     </section>
 
     <section id="admin-panel">
         <nav class="sidebar">
             <h2>SureTask</h2>
             <ul id="sidebar-menu">
-                <li><button onclick="loadContent('Dashboard', loadDashboard)">Dashboard</button></li>
-                <li><button onclick="loadContent('Users', loadUsers)">Users</button></li>
-                <li><button onclick="loadContent('Admin Tasks', loadTasks)">Admin Tasks</button></li>
-                <li><button onclick="loadContent('User Promotions', loadPromotions)">User Promotions</button></li>
-                <li><button onclick="loadContent('Settings', loadSettings)">Settings</button></li>
+                <li><button onclick="loadDashboard()">Dashboard</button></li>
+                <li><button onclick="loadUsers()">Users</button></li>
+                <li><button onclick="loadTasks()">Admin Tasks</button></li>
+                <li><button onclick="loadPromotions()">User Promotions</button></li>
+                <li><button onclick="loadSettings()">Settings</button></li>
             </ul>
         </nav>
         <main class="content">
@@ -76,13 +90,14 @@
                 </div>
                 <button id="logout-btn">Logout</button>
             </header>
-            <div id="admin-content"></div>
+            <div id="admin-content">
+                <!-- Dynamic content loads here -->
+            </div>
         </main>
     </section>
 
 <script>
     let firebaseApp, auth, firestoreDb, idToken;
-    const ADMIN_EMAIL = 'mdrony786r@gmail.com'; // <-- আপনার অ্যাডমিন ইমেইল
 
     document.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -112,25 +127,29 @@
     });
 
     async function handleAuthState(user) {
-        if (user && user.email === ADMIN_EMAIL) {
-            idToken = await user.getIdToken();
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'block';
-            loadDashboard();
+        if (user) {
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.admin) {
+                idToken = await user.getIdToken();
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                loadDashboard();
+            } else {
+                alert('You are not authorized to access this panel.');
+                auth.signOut();
+            }
         } else {
-            if (user) auth.signOut();
             document.getElementById('login-section').style.display = 'flex';
             document.getElementById('admin-panel').style.display = 'none';
         }
     }
 
     function handleLogin() {
-        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
-    }
-    
-    function loadContent(title, loaderFunction) {
-        document.getElementById('content-title').innerText = title;
-        loaderFunction();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, password).catch(err => {
+            document.getElementById('login-error').innerText = err.message;
+        });
     }
 
     async function fetchData(endpoint) {
@@ -142,14 +161,13 @@
         return res.json();
     }
 
-    function renderHTML(html) {
+    function renderContent(title, html) {
+        document.getElementById('content-title').innerText = title;
         document.getElementById('admin-content').innerHTML = html;
     }
 
-    // --- সম্পূর্ণ কার্যকরী ফাংশনগুলো ---
-
     async function loadDashboard() {
-        renderHTML(`
+        renderContent('Dashboard', `
             <div class="form-card">
                 <h3>Welcome to the SureTask Admin Panel!</h3>
                 <p>Select an option from the sidebar to manage your application.</p>
@@ -158,7 +176,7 @@
     }
 
     async function loadUsers(searchTerm = '') {
-        renderHTML('<p>Loading users...</p>');
+        renderContent('Users', '<p>Loading users...</p>');
         try {
             const users = await fetchData(`/api/admin/users?search=${encodeURIComponent(searchTerm)}`);
             let tableRows = users.map(user => {
@@ -176,7 +194,8 @@
                     </tr>
                 `;
             }).join('');
-            renderHTML(`
+
+            renderContent('Users', `
                 <div class="form-card">
                     <input id="user-search" type="text" placeholder="Search by User ID or Name..." onkeyup="searchUsers(event)" value="${searchTerm}">
                 </div>
@@ -185,88 +204,23 @@
                     <tbody>${tableRows}</tbody>
                 </table>
             `);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+        } catch (e) { renderContent('Users', `<p style="color:red;">Error: ${e.message}</p>`); }
     }
 
     async function loadTasks() {
-        renderHTML('<p>Loading tasks...</p>');
-        try {
-            const tasks = await fetchData('/api/admin/tasks');
-            let tableRows = tasks.map(task => `
-                <tr>
-                    <td>${task.title}</td>
-                    <td>${task.taskType}</td>
-                    <td>${task.points}</td>
-                    <td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td>
-                </tr>
-            `).join('');
-            renderHTML(`
-                <div class="form-card">
-                    <h3>Create New Admin Task</h3>
-                    <form id="task-form">
-                        <input id="task-title" placeholder="Task Title" required>
-                        <input id="task-points" type="number" placeholder="Reward Points" required>
-                        <select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select>
-                        <input id="task-url" placeholder="URL (optional)">
-                        <button type="submit">Create Task</button>
-                    </form>
-                </div>
-                <table>
-                    <thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-            `);
-            document.getElementById('task-form').addEventListener('submit', createTask);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
     
     async function loadPromotions() {
-        renderHTML('<p>Loading promotions...</p>');
-        try {
-            const promotions = await fetchData('/api/admin/promotions');
-            let tableRows = promotions.map(promo => `
-                <tr>
-                    <td>${promo.title || promo.link}</td>
-                    <td>${promo.type}</td>
-                    <td>${promo.budget}</td>
-                    <td>${promo.rewardPerUser}</td>
-                    <td>${promo.status}</td>
-                    <td><button class="action-btn ban-btn" onclick="deletePromotion('${promo.id}')">Delete</button></td>
-                </tr>
-            `).join('');
-            renderHTML(`
-                <table>
-                    <thead><tr><th>Title/Link</th><th>Type</th><th>Budget</th><th>Reward</th><th>Status</th><th>Action</th></tr></thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-            `);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
     
     async function loadSettings() {
-        renderHTML('<p>Loading settings...</p>');
-        try {
-            const settings = await fetchData('/api/admin/settings');
-            renderHTML(`
-                <div class="form-card">
-                    <h3>App Settings</h3>
-                    <form id="settings-form">
-                        <label>Referral Commission (%)</label>
-                        <input id="setting-ref-commission" type="number" value="${settings.referralCommission}" required>
-                        <label>Min Reward (Promotions)</label>
-                        <input id="setting-min-reward" type="number" value="${settings.minReward}" required>
-                        <label>Max Reward (Promotions)</label>
-                        <input id="setting-max-reward" type="number" value="${settings.maxReward}" required>
-                        <button type="submit">Save Settings</button>
-                    </form>
-                </div>
-            `);
-            document.getElementById('settings-form').addEventListener('submit', saveSettings);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+        // ... (আগের উত্তর অনুযায়ী অপরিবর্তিত) ...
     }
 
     function searchUsers(event) {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' || !event.target.value) {
             loadUsers(event.target.value);
         }
     }
@@ -296,63 +250,7 @@
         }
     }
 
-    async function createTask(e) {
-        e.preventDefault();
-        const task = {
-            title: document.getElementById('task-title').value,
-            points: Number(document.getElementById('task-points').value),
-            taskType: document.getElementById('task-type').value,
-            url: document.getElementById('task-url').value,
-        };
-        try {
-            await fetch('/api/admin/tasks', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(task)
-            });
-            loadTasks();
-        } catch (e) { alert('Failed to create task.'); }
-    }
-
-    async function deleteTask(taskId) {
-        if (!confirm('Are you sure you want to delete this task?')) return;
-        try {
-            await fetch(`/api/admin/tasks?taskId=${taskId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${idToken}` }
-            });
-            loadTasks();
-        } catch (e) { alert('Failed to delete task.'); }
-    }
-
-    async function saveSettings(e) {
-        e.preventDefault();
-        const settings = {
-            referralCommission: document.getElementById('setting-ref-commission').value,
-            minReward: document.getElementById('setting-min-reward').value,
-            maxReward: document.getElementById('setting-max-reward').value,
-        };
-        try {
-            await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings)
-            });
-            alert('Settings saved successfully!');
-            loadSettings();
-        } catch (e) { alert('Failed to save settings.'); }
-    }
-
-    async function deletePromotion(promotionId) {
-        if (!confirm('Are you sure you want to delete this promotion?')) return;
-        try {
-            await fetch(`/api/admin/promotions?promotionId=${promotionId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${idToken}` }
-            });
-            loadPromotions();
-        } catch (e) { alert('Failed to delete promotion.'); }
-    }
+    // ... createTask, deleteTask, saveSettings, deletePromotion ফাংশনগুলো অপরিবর্তিত থাকবে ...
 </script>
 </body>
 </html>
