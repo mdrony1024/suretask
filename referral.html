@@ -9,12 +9,11 @@
     
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> <!-- User data এর জন্য প্রয়োজন -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> <!-- Firestore এর জন্য এটি যোগ করুন -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* --- আপনার মূল ফাইলের সকল CSS কোড এখানে কপি করে পেস্ট করুন --- */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -25,12 +24,10 @@
         body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
         .view { padding: 0 15px; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .page-header { display: flex; align-items: center; padding: 15px; }
+        .page-header { display: flex; align-items: center; padding: 15px; color: var(--text-color); }
         .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
         .page-header .title { font-size: 20px; font-weight: 600; }
-        
-        /* --- নতুন রেফারেল পেজের জন্য স্টাইল --- */
-        .referral-card { background: var(--card-bg-color); border-radius: 20px; padding: 25px; margin-top: 0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); position: relative; }
+        .referral-card { background: var(--card-bg-color); border-radius: 20px; padding: 25px; margin-top: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); position: relative; }
         .commission-badge { position: absolute; top: 20px; right: 20px; background-color: rgba(88, 86, 214, 0.1); color: var(--accent-color); padding: 5px 12px; border-radius: 8px; font-weight: 700; font-size: 14px; }
         .referral-card h2 { font-size: 18px; font-weight: 600; margin-top: 0; }
         .referral-steps { margin-top: 25px; display: flex; flex-direction: column; gap: 20px; }
@@ -42,18 +39,26 @@
         .referral-link-section h4 { font-size: 16px; font-weight: 600; margin-bottom: 10px; color: var(--text-color); }
         .link-box { display: flex; align-items: center; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 5px; padding-left: 15px; }
         .link-box input { flex-grow: 1; border: none; background: transparent; color: var(--text-color); font-size: 14px; outline: none; }
-        .copy-btn { background-color: var(--accent-color); color: white; border: none; border-radius: 8px; width: 40px; height: 40px; font-size: 20px; cursor: pointer; }
-        .share-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .copy-btn { background-color: var(--accent-color); color: white; border: none; border-radius: 8px; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+        .share-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
         .share-btn { padding: 12px; border-radius: 12px; border: none; color: white; font-size: 16px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
         .share-btn.telegram { background-color: #2AABEE; }
         .share-btn.whatsapp { background-color: #25D366; }
         .share-btn.twitter { background-color: #14171A; }
-        .referrals-list-section { margin-top: 20px; }
-        .search-box { display: flex; align-items: center; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 0 15px; margin-top: 10px; }
-        .search-box i { color: var(--secondary-text-color); font-size: 20px; }
-        .search-box input { flex-grow: 1; border: none; background: transparent; color: var(--text-color); font-size: 14px; outline: none; padding: 12px 10px; }
         
-        /* --- Bottom Nav --- */
+        /* রেফারেল লিস্ট এবং কাউন্টারের জন্য নতুন স্টাইল */
+        .referral-stats-card { display: flex; justify-content: space-between; align-items: center; padding: 20px; background-color: var(--card-bg-color); border-radius: 15px; margin-top:20px;}
+        .stat-item { text-align: center; }
+        .stat-item .count { font-size: 22px; font-weight: 700; color: var(--accent-color); }
+        .stat-item .label { font-size: 14px; color: var(--secondary-text-color); margin-top: 4px;}
+        .referrals-list-card { margin-top: 20px; padding: 20px; background-color: var(--card-bg-color); border-radius: 15px; }
+        .referral-user-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .referral-user-item:last-child { border-bottom: none; }
+        .user-pic { width: 40px; height: 40px; border-radius: 50%; background-color: #eee; margin-right: 12px; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+        .user-pic img { width: 100%; height: 100%; object-fit: cover; }
+        .user-info .name { font-weight: 600; }
+        .user-info .date { font-size: 12px; color: var(--secondary-text-color); }
+
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--card-bg-color); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 100; border-radius: 20px 20px 0 0; margin: 0 10px; }
         .nav-item { cursor: pointer; text-align: center; color: var(--secondary-text-color); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex-basis: 0; flex-grow: 1; }
         .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; }
@@ -63,50 +68,40 @@
 </head>
 <body class="light">
     
-    <div id="app-container">
-        <!-- কন্টেন্ট এখানে লোড হবে -->
-    </div>
+    <div id="app-container">Loading...</div>
     
     <nav class="bottom-nav">
-        <!-- মূল পেজের লিঙ্ক দিন -->
         <div id="nav-home" class="nav-item" onclick="window.location.href='index.html'"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
         <div id="nav-tasks" class="nav-item"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
         <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
-        <!-- এই পেজটি যেহেতু রেফারেল, তাই একে active ক্লাস দিন -->
         <div id="nav-referral" class="nav-item active"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
-        <div id="nav-profile" class="nav-item" onclick="window.location.href='profile.html'"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
+        <div id="nav-profile" class="nav-item" onclick="window.location.href='index.html'"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
     
 <script>
-// গ্লোবাল ভ্যারিয়েবল
 let tg, db, firestoreDb, currentUser = {}, userId;
-let appSettings = { referralCommission: 20 }; // ডিফল্ট ভ্যালু
+let appSettings = { referralCommission: 20 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // এই পেজের জন্য Firebase এবং Telegram App পুনরায় চালু করতে হবে
     async function initializeReferralPage() {
         try {
-            // আপনার config ফাইল থেকে Firebase কনফিগারেশন আনুন
             const response = await fetch('/api/config');
             if (!response.ok) throw new Error('Config fetch failed');
             const firebaseConfig = await response.json();
             
             firebase.initializeApp(firebaseConfig);
-            db = firebase.database(); // Realtime DB
-            firestoreDb = firebase.firestore(); // Firestore
+            db = firebase.database();
+            firestoreDb = firebase.firestore();
             
             tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
-            userId = tg.initDataUnsafe?.user?.id || 'test_user_referral';
+            userId = tg.initDataUnsafe?.user?.id || '5761590224'; // একটি টেস্ট আইডি
             
-            // থিম সেট করুন
-            const savedTheme = localStorage.getItem('theme') || 'light';
+            const savedTheme = localStorage.getItem('theme') || 'dark';
             document.body.className = savedTheme;
 
-            // প্রথমে সেটিংস লোড করুন, তারপর ব্যবহারকারীর ডেটা
             loadSettingsAndThenUserData();
-
         } catch (error) {
             document.getElementById('app-container').innerHTML = `<h1>Page Failed to Load</h1><p>${error.message}</p>`;
         }
@@ -114,14 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadSettingsAndThenUserData() {
         firestoreDb.collection('settings').doc('global').onSnapshot((doc) => {
-            if (doc.exists) {
-                appSettings = doc.data();
-            }
-            // সেটিংস লোড হওয়ার পর ব্যবহারকারীর ডেটা লোড করুন
+            if (doc.exists) appSettings = doc.data();
             loadUserData();
         }, (error) => {
             console.error("Error loading settings:", error);
-            // সেটিংস লোড না হলেও ডিফল্ট ভ্যালু দিয়ে অ্যাপ চালানো হবে
             loadUserData();
         });
     }
@@ -130,35 +121,29 @@ document.addEventListener('DOMContentLoaded', () => {
         db.ref(`users/${userId}`).on('value', (snapshot) => {
             if (snapshot.exists()) {
                 currentUser = snapshot.val();
-                // সব ডেটা লোড হওয়ার পর পেজ রেন্ডার করুন
                 renderReferralPage(document.getElementById('app-container'));
+                loadReferralsList(); // <-- রেফারেল লিস্ট লোড করার ফাংশন কল করা হয়েছে
             } else {
-                 document.getElementById('app-container').innerHTML = `<h1>User not found!</h1>`;
+                 document.getElementById('app-container').innerHTML = `<h1 style="text-align:center; margin-top: 40px;">User not found!</h1>`;
             }
         });
     }
 
     function renderReferralPage(container) {
-        const referralCode = currentUser.referralCode || currentUser.id;
+        const referralCode = currentUser.referralCode || userId;
         const referralLink = `https://t.me/suretaskbot?start=${referralCode}`;
         const commission = appSettings.referralCommission || 20;
-        const shareText = encodeURIComponent(`Join me on SureTask and start earning today!`);
-
+        
         container.innerHTML = `
             <div class="page-header">
                 <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
-                <h1 class="title">Refer & Earn Forever</h1>
+                <h1 class="title">Refer & Earn</h1>
             </div>
             <div class="view">
+                <!-- Share Card -->
                 <div class="referral-card">
                     <div class="commission-badge">${commission}%</div>
-                    <h2>Earn ${commission}% of your friends earnings for life!</h2>
-                    <p style="color: var(--secondary-text-color); font-size: 14px; margin-top: 5px;">Follow these simple steps to start:</p>
-                    <div class="referral-steps">
-                        <div class="step"><div class="step-icon"><i class='bx bx-link-alt'></i></div><div class="step-text"><h4>1. Copy Your Link</h4><p>Grab your unique referral link below.</p></div></div>
-                        <div class="step"><div class="step-icon"><i class='bx bx-share-alt'></i></div><div class="step-text"><h4>2. Share with Friends</h4><p>Use the buttons to share your link.</p></div></div>
-                        <div class="step"><div class="step-icon"><i class='bx bx-wallet-alt'></i></div><div class="step-text"><h4>3. Earn Lifetime Rewards</h4><p>Get ${commission}% of your friends earnings forever!</p></div></div>
-                    </div>
+                    <h2>Invite Friends, Earn Forever!</h2>
                     <div class="referral-link-section">
                         <h4>Your Referral Link</h4>
                         <div class="link-box">
@@ -172,29 +157,72 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="share-twitter" class="share-btn twitter"><i class='bx bxl-twitter'></i> Twitter/X</button>
                     </div>
                 </div>
-                <div class="referral-card referrals-list-section">
+
+                <!-- Stats Card -->
+                <div class="referral-stats-card">
+                    <div class="stat-item">
+                        <div id="referral-count" class="count">${currentUser.referralCount || 0}</div>
+                        <div class="label">Total Referrals</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="referral-earnings" class="count">0</div>
+                        <div class="label">Total Earnings</div>
+                    </div>
+                </div>
+
+                <!-- Referrals List Card -->
+                <div class="referrals-list-card">
                      <h2>Referrals List</h2>
-                     <div class="search-box">
-                        <i class='bx bx-search'></i>
-                        <input type="text" placeholder="Search referrals by username...">
+                     <div id="referrals-list-container">
+                        <p style="text-align:center; color: var(--secondary-text-color);">Loading referred users...</p>
                      </div>
-                     <div id="referrals-list-container" style="margin-top: 15px; color: var(--secondary-text-color); text-align: center;">Your referred users will appear here.</div>
                 </div>
             </div>`;
 
-        // Event Listeners
-        const copyBtn = document.getElementById('copy-link-btn');
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(document.getElementById('referral-link-input').value);
-            copyBtn.innerHTML = "<i class='bx bx-check'></i>";
-            setTimeout(() => { copyBtn.innerHTML = "<i class='bx bx-copy'></i>"; }, 2000);
+        const shareText = encodeURIComponent(`Join me on SureTask and start earning today!`);
+        document.getElementById('copy-link-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(referralLink);
+            document.getElementById('copy-link-btn').innerHTML = "<i class='bx bx-check'></i>";
+            setTimeout(() => { document.getElementById('copy-link-btn').innerHTML = "<i class='bx bx-copy'></i>"; }, 2000);
         });
-
         document.getElementById('share-telegram').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`));
         document.getElementById('share-whatsapp').addEventListener('click', () => window.open(`https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(referralLink)}`));
         document.getElementById('share-twitter').addEventListener('click', () => window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(referralLink)}`));
     }
     
+    // --- নতুন ফাংশন: রেফারেল লিস্ট লোড করার জন্য ---
+    function loadReferralsList() {
+        const listContainer = document.getElementById('referrals-list-container');
+        // Firebase থেকে সেইসব ব্যবহারকারীদের খোঁজা হবে যাদের 'referredBy' ফিল্ড বর্তমান ব্যবহারকারীর ID এর সমান
+        db.ref('users').orderByChild('referredBy').equalTo(String(userId)).on('value', snapshot => {
+            if (snapshot.exists()) {
+                listContainer.innerHTML = ''; // পুরনো লিস্ট মুছে ফেলা হলো
+                snapshot.forEach(childSnapshot => {
+                    const referredUser = childSnapshot.val();
+                    const item = document.createElement('div');
+                    item.className = 'referral-user-item';
+                    
+                    const profilePic = referredUser.profilePhotoUrl || referredUser.initialPhotoUrl;
+                    const name = referredUser.customName || referredUser.name || 'Unnamed User';
+                    const joinDate = referredUser.createdAt ? new Date(referredUser.createdAt).toLocaleDateString() : 'N/A';
+
+                    item.innerHTML = `
+                        <div class="user-pic">
+                           ${profilePic ? `<img src="${profilePic}" alt="DP">` : `<i class='bx bxs-user'></i>`}
+                        </div>
+                        <div class="user-info">
+                            <div class="name">${name}</div>
+                            <div class="date">Joined: ${joinDate}</div>
+                        </div>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            } else {
+                listContainer.innerHTML = `<p style="text-align:center; color: var(--secondary-text-color);">You haven't referred anyone yet.</p>`;
+            }
+        });
+    }
+
     initializeReferralPage();
 });
 </script>
