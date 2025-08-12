@@ -72,11 +72,11 @@
         <nav class="sidebar">
             <h2>SureTask</h2>
             <ul id="sidebar-menu">
-                <li><button onclick="loadDashboard()">Dashboard</button></li>
-                <li><button onclick="loadUsers()">Users</button></li>
-                <li><button onclick="loadTasks()">Admin Tasks</button></li>
-                <li><button onclick="loadPromotions()">User Promotions</button></li>
-                <li><button onclick="loadSettings()">Settings</button></li>
+                <li><button onclick="loadContent('Dashboard', loadDashboard)">Dashboard</button></li>
+                <li><button onclick="loadContent('Users', loadUsers)">Users</button></li>
+                <li><button onclick="loadContent('Admin Tasks', loadTasks)">Admin Tasks</button></li>
+                <li><button onclick="loadContent('User Promotions', loadPromotions)">User Promotions</button></li>
+                <li><button onclick="loadContent('Settings', loadSettings)">Settings</button></li>
             </ul>
         </nav>
         <main class="content">
@@ -97,9 +97,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch('/api/config');
-            if (!response.ok) throw new Error('Failed to fetch config');
             const firebaseConfig = await response.json();
-            
             firebaseApp = firebase.initializeApp(firebaseConfig);
             auth = firebase.auth();
             firestoreDb = firebase.firestore();
@@ -124,18 +122,16 @@
 
     async function handleAuthState(user) {
         if (user) {
-            try {
-                const tokenResult = await user.getIdTokenResult();
-                if (tokenResult.claims.admin) {
-                    idToken = await user.getIdToken();
-                    document.getElementById('login-section').style.display = 'none';
-                    document.getElementById('admin-panel').style.display = 'block';
-                    loadDashboard();
-                } else {
-                    alert('You are not authorized to access this panel.');
-                    auth.signOut();
-                }
-            } catch (error) { auth.signOut(); }
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.admin) {
+                idToken = await user.getIdToken();
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                loadDashboard();
+            } else {
+                alert('You are not authorized to access this panel.');
+                auth.signOut();
+            }
         } else {
             document.getElementById('login-section').style.display = 'flex';
             document.getElementById('admin-panel').style.display = 'none';
@@ -145,30 +141,30 @@
     function handleLogin() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        document.getElementById('login-error').innerText = '';
         auth.signInWithEmailAndPassword(email, password).catch(err => {
             document.getElementById('login-error').innerText = err.message;
         });
     }
 
-    // --- এই ফাংশনগুলো অপরিবর্তিত ---
     function loadContent(title, loaderFunction) {
         document.getElementById('content-title').innerText = title;
         loaderFunction();
     }
+
     async function fetchData(endpoint) {
         const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${idToken}` } });
         if (!res.ok) { const error = await res.json(); throw new Error(error.message); }
         return res.json();
     }
+
     function renderHTML(html) {
         document.getElementById('admin-content').innerHTML = html;
     }
+
     async function loadDashboard() {
-        renderHTML(`<div class="form-card"><h3>Welcome!</h3></div>`);
+        renderHTML(`<div class="form-card"><h3>Welcome!</h3><p>Select an option from the sidebar to manage your application.</p></div>`);
     }
 
-    // --- আপনার দেওয়া কোড অনুযায়ী এই ফাংশনটি ঠিক আছে ---
     async function loadUsers(searchTerm = '') {
         renderHTML('<p>Loading users...</p>');
         try {
