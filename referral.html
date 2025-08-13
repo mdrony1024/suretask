@@ -75,14 +75,16 @@
         <div id="nav-tasks" class="nav-item" onclick="window.location.href='tasks.html'"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
         <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
         <div id="nav-referral" class="nav-item active"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
-        <div id="nav-profile" class="nav-item" onclick="window.location.href='index.html'"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
+        <!-- প্রোফাইল নেভিগেশন ঠিক করা হয়েছে -->
+        <div id="nav-profile" class="nav-item" onclick="navigateToProfile()"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
     
 <script>
+document.addEventListener('DOMContentLoaded', () => {
     let tg, db, firestoreDb, currentUser = {}, userId;
     let appSettings = { referralCommission: 20 };
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    async function initializeApp() {
         try {
             const response = await fetch('/api/config');
             if (!response.ok) throw new Error('Config fetch failed');
@@ -104,33 +106,39 @@
         } catch (error) {
             document.getElementById('app-container').innerHTML = `<h1>Page Failed to Load</h1><p>${error.message}</p>`;
         }
-    });
+    }
 
     function loadSettingsAndThenUserData() {
-        firestoreDb.collection('settings').doc('global').onSnapshot((doc) => {
-            if (doc.exists) appSettings = doc.data();
-            loadUserData();
-        }, (error) => {
-            console.error("Error loading settings:", error);
-            loadUserData();
-        });
+        firestoreDb.collection('settings').doc('global').get()
+            .then(doc => {
+                if (doc.exists) appSettings = doc.data();
+            })
+            .catch(error => console.error("Error loading settings:", error))
+            .finally(() => loadUserData());
     }
 
     function loadUserData() {
         firestoreDb.collection('users').doc(String(userId)).onSnapshot((doc) => {
             if (doc.exists) {
                 currentUser = doc.data();
+                 // referralCode, referrals, এবং referralEarnings ফিল্ড না থাকলে ডিফল্ট মান সেট করা হচ্ছে
+                if (!currentUser.referralCode) currentUser.referralCode = userId;
+                if (!currentUser.referrals) currentUser.referrals = 0;
+                if (!currentUser.referralEarnings) currentUser.referralEarnings = 0;
+                
                 renderReferralPage(document.getElementById('app-container'));
                 loadReferralsList();
             } else {
                  document.getElementById('app-container').innerHTML = `<h1 style="text-align:center; margin-top: 40px;">User not found! Please restart the bot.</h1>`;
             }
+        }, error => {
+            console.error("Error fetching user data:", error);
+            document.getElementById('app-container').innerHTML = `<h1>Error</h1><p>Could not load your data. Please try again.</p>`;
         });
     }
 
     function renderReferralPage(container) {
-        const referralCode = currentUser.referralCode || userId;
-        const referralLink = `https://t.me/suretaskbot?start=${referralCode}`;
+        const referralLink = `https://t.me/suretaskbot?start=${currentUser.referralCode}`;
         const commission = appSettings.referralCommission || 20;
         
         container.innerHTML = `
@@ -163,11 +171,11 @@
                 </div>
                 <div class="referral-stats-card">
                     <div class="stat-item">
-                        <div id="referral-count" class="count">${currentUser.referralCount || 0}</div>
+                        <div id="referral-count" class="count">${currentUser.referrals || 0}</div>
                         <div class="label">Total Referrals</div>
                     </div>
                     <div class="stat-item">
-                        <div id="referral-earnings" class="count">${currentUser.referralEarnings || 0}</div>
+                        <div id="referral-earnings" class="count">${currentUser.referralEarnings.toFixed(2)}</div>
                         <div class="label">Total Earnings</div>
                     </div>
                 </div>
@@ -193,6 +201,20 @@
         document.getElementById('share-telegram').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`));
         document.getElementById('share-whatsapp').addEventListener('click', () => window.open(`https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(referralLink)}`));
         document.getElementById('share-twitter').addEventListener('click', () => window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(referralLink)}`));
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.referral-user-item');
+            items.forEach(item => {
+                const name = item.querySelector('.user-info .name').textContent.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
     }
     
     function loadReferralsList() {
@@ -208,23 +230,27 @@
                     let joinDate = 'N/A';
                     if (referredUser.createdAt && referredUser.createdAt.toDate) {
                         joinDate = referredUser.createdAt.toDate().toLocaleDateString();
+                    } else if (typeof referredUser.createdAt === 'string') {
+                        joinDate = new Date(referredUser.createdAt).toLocaleDateString();
                     }
 
                     item.innerHTML = `
-                        <div id="ref-pic-${referredUser.id}" class="user-pic">
+                        <div id="ref-pic-${doc.id}" class="user-pic">
                            <i class='bx bxs-user' style="font-size: 24px;"></i>
                         </div>
                         <div class="user-info">
-                            <div class="name">${referredUser.name || 'Unnamed User'}</div>
+                            <div class="name">${referredUser.customName || referredUser.name || 'Unnamed User'}</div>
                             <div class="date">Joined: ${joinDate}</div>
                         </div>`;
                     listContainer.appendChild(item);
 
-                    const picContainer = document.getElementById(`ref-pic-${referredUser.id}`);
-                    db.ref(`users/${referredUser.id}`).once('value', rtSnapshot => {
+                    const picContainer = document.getElementById(`ref-pic-${doc.id}`);
+                    db.ref(`users/${doc.id}`).once('value', rtSnapshot => {
                         if (rtSnapshot.exists()) {
                             const rtData = rtSnapshot.val();
                             renderProfilePic(picContainer, rtData.name, rtData.profilePhotoUrl || rtData.initialPhotoUrl);
+                        } else {
+                            renderProfilePic(picContainer, referredUser.name, null);
                         }
                     });
                 });
@@ -233,7 +259,7 @@
             }
         }, error => {
             console.error("Error loading referrals list:", error);
-            listContainer.innerHTML = `<p style="text-align:center; color: red;">Could not load referrals. Maybe an index is required.</p>`;
+            listContainer.innerHTML = `<p style="text-align:center; color: red;">Could not load referrals. Check Firestore indexes.</p>`;
         });
     }
 
@@ -267,7 +293,14 @@
         return color;
     }
 
-    initializeReferralPage();
+    function navigateToProfile() {
+        // এই ফাংশনটি ব্যবহারকারীকে index.html পেজে পাঠাবে এবং প্রোফাইল ভিউ দেখানোর জন্য একটি চিহ্ন রেখে দেবে।
+        localStorage.setItem('view', 'profile');
+        window.location.href = 'index.html';
+    }
+
+    // অ্যাপ চালু করার জন্য মূল ফাংশন কল
+    initializeApp();
 });
 </script>
 </body>
