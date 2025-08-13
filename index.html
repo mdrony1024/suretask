@@ -82,7 +82,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let db, storage, tg, currentUser = {}, userId;
+    // Firestore ব্যবহারের জন্য ভ্যারিয়েবল যোগ করা হয়েছে
+    let db, firestore, storage, tg, currentUser = {}, userId;
 
     async function initializeApp() {
         try {
@@ -91,8 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const firebaseConfig = await response.json();
             
             firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
+            
+            // Firebase সার্ভিসগুলো ইনিশিয়ালাইজ করা হয়েছে
+            db = firebase.database(); // Realtime Database
+            firestore = firebase.firestore(); // Firestore
             storage = firebase.storage();
+            
             tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
@@ -101,38 +106,66 @@ document.addEventListener('DOMContentLoaded', () => {
             tg.showAlert("Welcome! Please be aware of our terms and conditions.");
             
             setupTheme();
-            setupNavigation(); // নেভিগেশন সেটআপ এখানে কল করা হয়েছে
-            runUserLogic();
+            setupNavigation();
+            runUserLogic(); // মূল ফাংশন কল করা হয়েছে
         } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
 
+    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     function runUserLogic() {
-        const userRef = db.ref(`users/${userId}`);
-        userRef.on('value', (snapshot) => {
+        const rtdbUserRef = db.ref(`users/${userId}`);
+        const firestoreUserRef = firestore.collection('users').doc(String(userId));
+
+        // Realtime Database থেকে ব্যবহারকারীর তথ্য শোনার জন্য লিসেনার সেট করা হয়েছে
+        rtdbUserRef.on('value', (rtdbSnapshot) => {
             const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
             const freshUsername = tg.initDataUnsafe?.user?.username || null;
             const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
-            
-            if (snapshot.exists()) {
-                currentUser = snapshot.val();
+
+            // ধাপ ১: Realtime Database থেকে ব্যবহারকারীর বেস প্রোফাইল তৈরি করা
+            if (rtdbSnapshot.exists()) {
+                currentUser = rtdbSnapshot.val();
                 const updates = {};
                 if (!currentUser.customName && currentUser.name !== freshName) updates.name = freshName;
                 if (currentUser.username !== freshUsername) updates.username = freshUsername;
                 if (!currentUser.initialPhotoUrl && freshPhotoUrl) updates.initialPhotoUrl = freshPhotoUrl;
-                if (Object.keys(updates).length > 0) userRef.update(updates);
+                if (Object.keys(updates).length > 0) rtdbUserRef.update(updates);
             } else {
                 const referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
                 currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
-                userRef.set(currentUser);
+                rtdbUserRef.set(currentUser);
             }
-            // বর্তমানে যে পেজটি খোলা আছে, সেটিকে রেন্ডার করুন
-            const activeNav = document.querySelector('.nav-item.active');
-            if (activeNav) {
-                const viewName = activeNav.id.split('-')[1];
-                 if(viewName !== 'referral') { // রেফারেল পেজ বাদে অন্য পেজ রেন্ডার হবে
-                    renderView(viewName);
-                 }
-            }
+
+            // ধাপ ২: Firestore থেকে আসল পয়েন্ট সংগ্রহ করা
+            firestoreUserRef.get().then(firestoreDoc => {
+                let pointsFromFirestore = 0;
+                if (firestoreDoc.exists) {
+                    pointsFromFirestore = firestoreDoc.data().points || 0;
+                } else {
+                    // যদি Firestore-এ ব্যবহারকারী না থাকে, তাহলে তৈরি করা হচ্ছে
+                    firestoreUserRef.set({ name: currentUser.name, username: currentUser.username, points: 0 });
+                }
+
+                // ধাপ ৩: পয়েন্ট সিঙ্ক করা
+                // এটি হোম পেজ এবং লিডারবোর্ড উভয়ের জন্য ডেটা সঠিক রাখবে
+                if (currentUser.points !== pointsFromFirestore) {
+                    currentUser.points = pointsFromFirestore;
+                    // Realtime Database-এ পয়েন্ট আপডেট করা হচ্ছে
+                    rtdbUserRef.child('points').set(pointsFromFirestore);
+                }
+
+            }).catch(error => {
+                console.error("Firestore থেকে পয়েন্ট আনতে সমস্যা হয়েছে:", error);
+            }).finally(() => {
+                // ধাপ ৪: সব ডেটা ঠিকঠাক পাওয়ার পর পেজ রেন্ডার করা
+                const activeNav = document.querySelector('.nav-item.active');
+                if (activeNav) {
+                    const viewName = activeNav.id.split('-')[1];
+                    if(viewName !== 'referral') {
+                        renderView(viewName);
+                    }
+                }
+            });
         });
     }
 
@@ -146,15 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
     }
 
-    // --- নেভিগেশন ফাংশন আপডেট করা হয়েছে ---
     function setupNavigation() {
         document.querySelectorAll('.nav-item[id]').forEach(item => {
             item.addEventListener('click', (e) => {
                 const viewName = e.currentTarget.id.split('-')[1];
-
-                // যদি রেফারেল বাটনে ক্লিক হয়, তাহলে referral.html পেজে নিয়ে যাবে
                 if (viewName === 'referral') {
-                    // থিম সেভ করে রাখা হয় যাতে নতুন পেজেও একই থিম থাকে
                     localStorage.setItem('theme', document.body.className);
                     window.location.href = 'referral.html';
                 } else {
@@ -162,11 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        // শুরুতে হোম পেজ দেখানোর জন্য
         renderView('home');
     }
     
-    // --- renderView ফাংশন থেকে 'referral' case সরিয়ে দেওয়া হয়েছে ---
     function renderView(viewName) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         const activeNavItem = document.getElementById(`nav-${viewName}`);
@@ -179,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'home': renderHomePage(container); break;
             case 'leaderboard': renderLeaderboardPage(container); break;
             case 'tasks': window.location.href = '/tasks.html'; break;
-            // 'referral' case টি আর এখানে নেই
             case 'profile': renderProfilePage(container); break;
             default: container.innerHTML = `<div class="view" style="margin-top:20px;"><p>Content for ${viewName} is coming soon.</p></div>`; break;
         }
@@ -259,8 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    // --- renderReferralPage ফাংশনটি এখান থেকে সরিয়ে দেওয়া হয়েছে ---
 
     function renderProfilePage(container) {
         container.innerHTML = `
