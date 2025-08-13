@@ -162,13 +162,13 @@
     }
 
     async function loadDashboard() {
-        renderHTML(`<div class="form-card"><h3>Welcome!</h3><p>Select an option from the sidebar to manage your application.</p></div>`);
+        renderHTML(`<div class="form-card"><h3>Welcome!</h3></div>`);
     }
 
     async function loadUsers(searchTerm = '') {
         renderHTML('<p>Loading users...</p>');
         try {
-            const users = await fetchData(`/api/admin/users?search=${encodeURIComponent(searchTerm)}`);
+            const users = await fetchData(`/api/admin?type=users&search=${encodeURIComponent(searchTerm)}`);
             let tableRows = users.map(user => {
                 const isBanned = user.banned === true;
                 return `<tr><td>${user.id}</td><td>${user.name||'N/A'}</td><td>${user.points||0}</td><td>${isBanned ? `<span style="color:red;">Banned</span>` : 'Active'}</td><td><button class="action-btn" onclick="editPoints('${user.id}')">Edit Points</button><button class="action-btn ${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="toggleBan('${user.id}', ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button></td></tr>`;
@@ -177,12 +177,10 @@
         } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
     }
 
-    // --- নিচের ফাংশনগুলো সম্পূর্ণ করে দেওয়া হলো ---
-
     async function loadTasks() {
         renderHTML('<p>Loading tasks...</p>');
         try {
-            const tasks = await fetchData('/api/admin/tasks');
+            const tasks = await fetchData('/api/admin?type=tasks');
             let tableRows = tasks.map(task => `<tr><td>${task.title}</td><td>${task.taskType}</td><td>${task.points}</td><td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td></tr>`).join('');
             renderHTML(`<div class="form-card"><h3>Create Admin Task</h3><form id="task-form"><input id="task-title" placeholder="Title" required><input id="task-points" type="number" placeholder="Points" required><select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select><input id="task-url" placeholder="URL"><button type="submit">Create</button></form></div><table><thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table>`);
             document.getElementById('task-form').addEventListener('submit', createTask);
@@ -192,7 +190,7 @@
     async function loadPromotions() {
         renderHTML('<p>Loading promotions...</p>');
         try {
-            const promotions = await fetchData('/api/admin/promotions');
+            const promotions = await fetchData('/api/admin?type=promotions');
             let tableRows = promotions.map(promo => `<tr><td>${promo.title||promo.link}</td><td>${promo.type}</td><td>${promo.budget}</td><td>${promo.rewardPerUser}</td><td>${promo.status}</td><td><button class="action-btn ban-btn" onclick="deletePromotion('${promo.id}')">Delete</button></td></tr>`).join('');
             renderHTML(`<table><thead><tr><th>Title/Link</th><th>Type</th><th>Budget</th><th>Reward</th><th>Status</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table>`);
         } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
@@ -201,7 +199,7 @@
     async function loadSettings() {
         renderHTML('<p>Loading settings...</p>');
         try {
-            const settings = await fetchData('/api/admin/settings');
+            const settings = await fetchData('/api/admin?type=settings');
             renderHTML(`<div class="form-card"><h3>Settings</h3><form id="settings-form"><label>Referral Commission (%)</label><input id="setting-ref-commission" type="number" value="${settings.referralCommission}" required><label>Min Reward</label><input id="setting-min-reward" type="number" value="${settings.minReward}" required><label>Max Reward</label><input id="setting-max-reward" type="number" value="${settings.maxReward}" required><button type="submit">Save</button></form></div>`);
             document.getElementById('settings-form').addEventListener('submit', saveSettings);
         } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
@@ -211,7 +209,7 @@
 
     async function updateUser(userId, action, value) {
         try {
-            const res = await fetch('/api/admin/users', {
+            const res = await fetch('/api/admin?type=users', {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, action, value })
@@ -244,7 +242,7 @@
             url: document.getElementById('task-url').value,
         };
         try {
-            await fetch('/api/admin/tasks', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
+            await fetch('/api/admin?type=tasks', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
             loadTasks();
         } catch (e) { alert('Failed to create task.'); }
     }
@@ -252,7 +250,7 @@
     async function deleteTask(taskId) {
         if (!confirm('Are you sure you want to delete this task?')) return;
         try {
-            await fetch(`/api/admin/tasks?taskId=${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
+            await fetch(`/api/admin?type=tasks&taskId=${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
             loadTasks();
         } catch (e) { alert('Failed to delete task.'); }
     }
@@ -265,7 +263,7 @@
             maxReward: document.getElementById('setting-max-reward').value,
         };
         try {
-            await fetch('/api/admin/settings', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+            await fetch('/api/admin?type=settings', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
             alert('Settings saved successfully!');
             loadSettings();
         } catch (e) { alert('Failed to save settings.'); }
@@ -274,7 +272,7 @@
     async function deletePromotion(promotionId) {
         if (!confirm('Are you sure you want to delete this promotion?')) return;
         try {
-            await fetch(`/api/admin/promotions?promotionId=${promotionId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
+            await fetch(`/api/admin?type=promotions&promotionId=${promotionId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
             loadPromotions();
         } catch (e) { alert('Failed to delete promotion.'); }
     }
