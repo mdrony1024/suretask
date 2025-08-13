@@ -76,7 +76,7 @@
         }
     </style>
 </head>
-<body class="dark"> <!-- ডিফল্ট থিম ডার্ক রাখা হলো, আপনার অ্যাপের মতো -->
+<body class="dark">
     
     <div class="page-header">
         <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
@@ -114,11 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     function loadTasks() {
         const container = document.getElementById('tasks-container');
         container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
         
-        firestoreDb.collection('tasks').where('active', '==', true).get()
+        // Firestore থেকে টাস্ক আনার কোড থেকে .where('active', '==', true) ফিল্টারটি সরানো হয়েছে
+        firestoreDb.collection('tasks').get()
             .then(snapshot => {
                 if (snapshot.empty) {
                     container.innerHTML = `<div class="no-tasks"><h3>No tasks available right now.</h3><p>Please check back later.</p></div>`;
@@ -138,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     function renderTaskCard(container, task, taskId) {
         const card = document.createElement('div');
         card.className = 'task-card';
@@ -159,32 +160,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const joinBtn = document.getElementById(`join-${taskId}`);
         const verifyBtn = document.getElementById(`verify-${taskId}`);
 
-        // Join বাটনের জন্য ইভেন্ট লিসেনার
         joinBtn.addEventListener('click', () => {
-            // লিঙ্কটি আছে কিনা এবং খালি নয় তা চেক করা হচ্ছে
             if (task.link && task.link.trim() !== '') {
-                // Telegram Web App এর মাধ্যমে লিঙ্ক খোলা হচ্ছে
                 tg.openLink(task.link);
-                // ব্যবহারকারী যে জয়েন করেছে তা মনে রাখার জন্য localStorage ব্যবহার করা যেতে পারে
                 localStorage.setItem(`task_joined_${taskId}`, 'true');
             } else {
                 tg.showAlert('Link for this task is not available.');
             }
         });
         
-        // Verify বাটনের জন্য ইভেন্ট লিসেনার (ভবিষ্যতের কাজের জন্য)
         verifyBtn.addEventListener('click', () => {
-             // এখানে ভেরিফিকেশনের জন্য সার্ভারে কল করার কোড লিখতে হবে
             tg.showAlert('Verification feature is coming soon!');
         });
-
-        // যদি ব্যবহারকারী আগে থেকেই জয়েন করে থাকে, তাহলে UI আপডেট করা যেতে পারে
-        if (localStorage.getItem(`task_joined_${taskId}`) === 'true') {
-            // উদাহরণস্বরূপ, জয়েন বাটনের স্টাইল পরিবর্তন করা যেতে পারে
-        }
     }
 
-    // অ্যাপ চালু করা হচ্ছে
     initializeApp();
 });
 </script>
