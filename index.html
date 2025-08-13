@@ -6,9 +6,11 @@
     <title>SureTask</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <!-- Firestore SDK যোগ করা হয়েছে -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
@@ -70,17 +72,17 @@
     <div id="app-container"></div>
     
     <nav class="bottom-nav">
-        <div id="nav-home" class="nav-item active" onclick="renderView('home')"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
-        <div id="nav-tasks" class="nav-item" onclick="window.location.href='tasks.html'"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
-        <div id="nav-withdraw" class="nav-item" onclick="renderView('withdraw')"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
-        <div id="nav-referral" class="nav-item" onclick="window.location.href='referral.html'"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
-        <div id="nav-profile" class="nav-item" onclick="renderView('profile')"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
+        <div id="nav-home" class="nav-item active"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
+        <div id="nav-tasks" class="nav-item"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
+        <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
+        <div id="nav-referral" class="nav-item"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
+        <div id="nav-profile" class="nav-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
     <input type="file" id="photo-upload-input" class="hidden" accept="image/*">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let db, firestoreDb, storage, tg, currentUser = {}, rtUser = {}, userId;
+    let db, storage, tg, currentUser = {}, userId;
 
     async function initializeApp() {
         try {
@@ -90,101 +92,96 @@ document.addEventListener('DOMContentLoaded', () => {
             
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
-            firestoreDb = firebase.firestore();
             storage = firebase.storage();
             tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
             userId = tg.initDataUnsafe?.user?.id || 'test_user';
+
+            tg.showAlert("Welcome! Please be aware of our terms and conditions.");
             
             setupTheme();
-            setupNavigation();
+            setupNavigation(); // নেভিগেশন সেটআপ এখানে কল করা হয়েছে
             runUserLogic();
-        } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load: ${error.message}</h1>`; }
+        } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
 
-    // --- চূড়ান্ত এবং নির্ভরযোগ্য User Logic ---
     function runUserLogic() {
-        const userDocRef = firestoreDb.collection('users').doc(String(userId));
-        const userRtRef = db.ref(`users/${userId}`);
-
-        // Firestore থেকে প্রধান তথ্য আনা হচ্ছে
-        userDocRef.onSnapshot(async (doc) => {
-            if (doc.exists) {
-                currentUser = doc.data();
+        const userRef = db.ref(`users/${userId}`);
+        userRef.on('value', (snapshot) => {
+            const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
+            const freshUsername = tg.initDataUnsafe?.user?.username || null;
+            const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
+            
+            if (snapshot.exists()) {
+                currentUser = snapshot.val();
+                const updates = {};
+                if (!currentUser.customName && currentUser.name !== freshName) updates.name = freshName;
+                if (currentUser.username !== freshUsername) updates.username = freshUsername;
+                if (!currentUser.initialPhotoUrl && freshPhotoUrl) updates.initialPhotoUrl = freshPhotoUrl;
+                if (Object.keys(updates).length > 0) userRef.update(updates);
             } else {
-                // যদি Firestore-এ ইউজার না থাকে, তাহলে তৈরি করা হচ্ছে
-                const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
-                const freshUsername = tg.initDataUnsafe?.user?.username || null;
-                currentUser = { 
-                    id: String(userId), name: freshName, username: freshUsername, 
-                    points: 0, referralCount: 0, referralEarnings: 0, banned: false,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                await userDocRef.set(currentUser);
+                const referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
+                userRef.set(currentUser);
             }
-
-            // Firestore থেকে তথ্য আসার পর, Realtime DB থেকে ছবির তথ্য আনা হচ্ছে
-            const rtSnapshot = await userRtRef.once('value');
-            if (rtSnapshot.exists()) {
-                rtUser = rtSnapshot.val();
-            } else {
-                 // যদি Realtime DB-তে না থাকে, তৈরি করা হচ্ছে
-                const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
-                const freshUsername = tg.initDataUnsafe?.user?.username || null;
-                const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
-                rtUser = { name: freshName, username: freshUsername, initialPhotoUrl: freshPhotoUrl };
-                await userRtRef.set(rtUser);
+            // বর্তমানে যে পেজটি খোলা আছে, সেটিকে রেন্ডার করুন
+            const activeNav = document.querySelector('.nav-item.active');
+            if (activeNav) {
+                const viewName = activeNav.id.split('-')[1];
+                 if(viewName !== 'referral') { // রেফারেল পেজ বাদে অন্য পেজ রেন্ডার হবে
+                    renderView(viewName);
+                 }
             }
-
-            // দুটি ডাটাবেস থেকেই তথ্য আসার পর পেজ দেখানো হচ্ছে
-            renderActiveView();
-
-        }, (error) => {
-            console.error("Firestore error:", error);
-            document.getElementById('app-container').innerHTML = `<h1>Error loading data.</h1>`;
         });
     }
-    
-    function renderActiveView() {
-        const activeNav = document.querySelector('.nav-item.active');
-        if (activeNav) {
-            renderView(activeNav.id.split('-')[1]);
-        }
+
+    function setupTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.className = savedTheme;
     }
     
-    function setupTheme() { /* অপরিবর্তিত */ }
-    function updateThemeIcon() { /* অপরিবর্তিত */ }
+    function updateThemeIcon() {
+        const themeIcon = document.querySelector('#theme-toggle-icon');
+        if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
+    }
 
-    // --- Navigation এখন renderView ব্যবহার করবে ---
+    // --- নেভিগেশন ফাংশন আপডেট করা হয়েছে ---
     function setupNavigation() {
         document.querySelectorAll('.nav-item[id]').forEach(item => {
-            const viewName = item.id.split('-')[1];
-            if (viewName === 'referral' || viewName === 'tasks') {
-                item.onclick = () => {
+            item.addEventListener('click', (e) => {
+                const viewName = e.currentTarget.id.split('-')[1];
+
+                // যদি রেফারেল বাটনে ক্লিক হয়, তাহলে referral.html পেজে নিয়ে যাবে
+                if (viewName === 'referral') {
+                    // থিম সেভ করে রাখা হয় যাতে নতুন পেজেও একই থিম থাকে
                     localStorage.setItem('theme', document.body.className);
-                    window.location.href = `${viewName}.html`;
-                };
-            } else {
-                item.onclick = () => renderView(viewName);
-            }
+                    window.location.href = 'referral.html';
+                } else {
+                    renderView(viewName);
+                }
+            });
         });
+        // শুরুতে হোম পেজ দেখানোর জন্য
         renderView('home');
     }
     
+    // --- renderView ফাংশন থেকে 'referral' case সরিয়ে দেওয়া হয়েছে ---
     function renderView(viewName) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(`nav-${viewName}`)?.classList.add('active');
+        const activeNavItem = document.getElementById(`nav-${viewName}`);
+        if(activeNavItem) activeNavItem.classList.add('active');
+        
         const container = document.getElementById('app-container');
         container.innerHTML = '';
         
         switch(viewName) {
             case 'home': renderHomePage(container); break;
             case 'leaderboard': renderLeaderboardPage(container); break;
+            case 'tasks': window.location.href = '/tasks.html'; break;
+            // 'referral' case টি আর এখানে নেই
             case 'profile': renderProfilePage(container); break;
-            // withdraw-এর জন্য একটি placeholder যোগ করা হলো
-            case 'withdraw': container.innerHTML = `<div class="view" style="padding-top:20px;"><h2>Withdraw</h2><p>Feature coming soon.</p></div>`; break;
-            default: container.innerHTML = `<div class="view" style="padding-top:20px;"><p>Page not found.</p></div>`; break;
+            default: container.innerHTML = `<div class="view" style="margin-top:20px;"><p>Content for ${viewName} is coming soon.</p></div>`; break;
         }
     }
 
@@ -198,73 +195,156 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="home-view" class="view">
                 <div class="profile-card">
                     <div id="home-profile-pic" class="profile-pic"></div>
-                    <h2 class="username">${rtUser.customName || rtUser.name || 'Loading...'}</h2>
+                    <h2 class="username">${currentUser.customName || currentUser.name || 'Loading...'}</h2>
                     <div class="points">${currentUser.points || 0} Points</div>
                     <button id="leaderboard-btn" class="action-button">🏆 Go to Leaderboard</button>
                 </div>
             </div>`;
         
-        renderProfilePic(document.getElementById('home-profile-pic'), rtUser.name, rtUser.profilePhotoUrl || rtUser.initialPhotoUrl);
+        renderProfilePic(document.getElementById('home-profile-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
         document.getElementById('leaderboard-btn').addEventListener('click', () => renderView('leaderboard'));
+        
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
-        themeToggleBtn.addEventListener('click', () => { /* ... */ });
+        themeToggleBtn.addEventListener('click', () => {
+            let newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
+            document.body.className = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon();
+        });
         updateThemeIcon();
     }
 
     function renderLeaderboardPage(container) {
         container.innerHTML = `
             <div class="page-header">
-                <button class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
+                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Leaderboard</h1>
             </div>
             <div id="leaderboard-list" class="view">Loading...</div>`;
         
-        firestoreDb.collection('users').orderBy('points', 'desc').limit(50).get()
-            .then(snapshot => {
-                const list = document.getElementById('leaderboard-list');
-                if (snapshot.empty) { list.innerHTML = 'Leaderboard is empty.'; return; }
-                list.innerHTML = '';
-                snapshot.docs.forEach((doc, index) => {
-                    const user = doc.data(); // Firestore থেকে
-                    // ... আপনার আগের Leaderboard-এর HTML কোড ...
-                    // Realtime DB থেকে ছবির জন্য ডেটা আনা হচ্ছে
-                    db.ref(`users/${user.id}`).once('value').then(rtSnap => {
-                        const rtData = rtSnap.val() || {};
-                        document.getElementById(`leaderboard-name-${user.id}`).innerText = rtData.customName || user.name;
-                        renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), rtData.name, rtData.profilePhotoUrl || rtData.initialPhotoUrl);
-                    });
-                });
+        db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
+            const list = document.getElementById('leaderboard-list');
+            if (!snapshot.exists()) { list.innerHTML = 'Leaderboard is empty.'; return; }
+            
+            const users = [];
+            snapshot.forEach(child => { users.push(child.val()); });
+            users.sort((a, b) => (b.points || 0) - (a.points || 0));
+            list.innerHTML = '';
+            
+            users.forEach((user, index) => {
+                const rank = index + 1;
+                const item = document.createElement('div');
+                item.className = `leaderboard-item rank-${rank}`;
+                const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
+                let rankDisplay = `#${rank}`;
+                if(rank <= 3) {
+                    const iconClass = rank === 1 ? 'bxs-crown' : (rank === 2 ? 'bxs-shield-alt-2' : 'bxs-star');
+                    rankDisplay = `<div class="rank-icon"><i class='bx ${iconClass}'></i></div>`;
+                }
+
+                item.innerHTML = `
+                    <div class="leaderboard-rank">${rankDisplay}</div>
+                    <a href="${profileLink}" target="_blank" style="display:contents;">
+                        <div id="leaderboard-pic-${user.id}" class="leaderboard-pic"></div>
+                        <div class="leaderboard-info">
+                            <div class="name">${user.customName || user.name || 'User'}</div>
+                            <div class="leaderboard-stats">
+                                <div class="points">${user.points || 0} Points</div>
+                                <div class="referrals"><i class='bx bxs-user-plus'></i><span>${user.referrals || 0}</span></div>
+                            </div>
+                        </div>
+                    </a>`;
+                list.appendChild(item);
+                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl || user.initialPhotoUrl);
             });
+        });
     }
+
+    // --- renderReferralPage ফাংশনটি এখান থেকে সরিয়ে দেওয়া হয়েছে ---
 
     function renderProfilePage(container) {
         container.innerHTML = `
             <div class="page-header">
-                <button class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
+                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Edit Profile</h1>
             </div>
             <div class="view"><div class="profile-card" style="margin-top: 10px;">
-                <div id="profile-page-pic" class="profile-pic" style="margin-top:0;"></div>
+                <div id="profile-page-pic" class="profile-pic" style="margin-top:0;">
+                     <div id="profile-pic-upload"><i class='bx bxs-camera'></i></div>
+                </div>
                 <div class="form-group">
                     <label for="username-input">Display Name</label>
-                    <input type="text" id="username-input" value="${rtUser.customName || rtUser.name || ''}" placeholder="Enter your name">
+                    <input type="text" id="username-input" value="${currentUser.customName || currentUser.name || ''}" placeholder="Enter your name">
                 </div>
                 <button id="save-profile-btn" class="action-button">Save Changes</button>
                 <p id="profile-status" class="status-message"></p>
             </div></div>`;
         
-        const picContainer = document.getElementById('profile-page-pic');
-        picContainer.innerHTML = `<div id="profile-pic-upload"><i class='bx bxs-camera'></i></div>`;
-        renderProfilePic(picContainer, rtUser.name, rtUser.profilePhotoUrl || rtUser.initialPhotoUrl);
-        document.getElementById('profile-pic-upload').addEventListener('click', () => document.getElementById('photo-upload-input').click());
+        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
+        
+        document.getElementById('profile-pic-upload').addEventListener('click', () => {
+            document.getElementById('photo-upload-input').click();
+        });
+        
         document.getElementById('photo-upload-input').addEventListener('change', handlePhotoUpload);
         document.getElementById('save-profile-btn').addEventListener('click', saveProfileChanges);
     }
     
-    function handlePhotoUpload(event) { /* অপরিবর্তিত */ }
-    function saveProfileChanges() { /* অপরিবর্তিত */ }
-    function renderProfilePic(container, name, photoUrl) { /* অপরিবর্তিত */ }
-    function generateColor(str) { /* অপরিবর্তিত */ }
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const statusEl = document.getElementById('profile-status');
+        statusEl.textContent = 'Uploading...'; statusEl.className = 'status-message';
+        
+        const storageRef = storage.ref(`profile_pictures/${userId}`);
+        storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(downloadURL => {
+            db.ref(`users/${userId}/profilePhotoUrl`).set(downloadURL);
+            statusEl.textContent = 'Photo updated!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Upload failed.'; statusEl.className = 'status-message status-error';
+        });
+    }
+    
+    function saveProfileChanges() {
+        const newName = document.getElementById('username-input').value.trim();
+        const statusEl = document.getElementById('profile-status');
+        if (!newName) { statusEl.textContent = 'Name cannot be empty.'; statusEl.className = 'status-message status-error'; return; }
+        statusEl.textContent = 'Saving...';
+        db.ref(`users/${userId}/customName`).set(newName).then(() => {
+            statusEl.textContent = 'Profile saved!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Failed to save.'; statusEl.className = 'status-message status-error';
+        });
+    }
+
+    function renderProfilePic(container, name, photoUrl) {
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                container.style.backgroundColor = generateColor(name);
+                container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            container.style.backgroundColor = generateColor(name);
+            container.innerHTML = `<span style="color:white; font-size:24px;">${initial}</span>`;
+        }
+    }
+
+    function generateColor(str) {
+        let hash = 0;
+        for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
+    }
 
     initializeApp();
 });
