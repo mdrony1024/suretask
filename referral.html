@@ -14,7 +14,6 @@
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* আপনার সকল CSS কোড এখানে অপরিবর্তিত থাকবে */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -80,17 +79,17 @@
     </nav>
     
 <script>
-let tg, firestoreDb, currentUser = {}, userId;
-let appSettings = { referralCommission: 20 };
+    let tg, db, firestoreDb, currentUser = {}, userId;
+    let appSettings = { referralCommission: 20 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    async function initializeReferralPage() {
+    document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch('/api/config');
             if (!response.ok) throw new Error('Config fetch failed');
             const firebaseConfig = await response.json();
             
             firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
             firestoreDb = firebase.firestore();
             
             tg = window.Telegram.WebApp;
@@ -105,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             document.getElementById('app-container').innerHTML = `<h1>Page Failed to Load</h1><p>${error.message}</p>`;
         }
-    }
+    });
 
     function loadSettingsAndThenUserData() {
         firestoreDb.collection('settings').doc('global').onSnapshot((doc) => {
@@ -117,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Firestore ব্যবহার করার জন্য আপডেট করা হয়েছে ---
     function loadUserData() {
         firestoreDb.collection('users').doc(String(userId)).onSnapshot((doc) => {
             if (doc.exists) {
@@ -184,13 +182,19 @@ document.addEventListener('DOMContentLoaded', () => {
                      </div>
                 </div>
             </div>`;
+            
         const shareText = encodeURIComponent(`Join me on SureTask and start earning today!`);
-        document.getElementById('copy-link-btn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink); /* ... */ });
+        const copyBtn = document.getElementById('copy-link-btn');
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(document.getElementById('referral-link-input').value);
+            copyBtn.innerHTML = "<i class='bx bx-check'></i>";
+            setTimeout(() => { copyBtn.innerHTML = "<i class='bx bx-copy'></i>"; }, 2000);
+        });
         document.getElementById('share-telegram').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`));
-        // ... অন্যান্য event listener
+        document.getElementById('share-whatsapp').addEventListener('click', () => window.open(`https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(referralLink)}`));
+        document.getElementById('share-twitter').addEventListener('click', () => window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(referralLink)}`));
     }
     
-    // --- Firestore ব্যবহার করার জন্য আপডেট করা হয়েছে ---
     function loadReferralsList() {
         const listContainer = document.getElementById('referrals-list-container');
         firestoreDb.collection('users').where('referredBy', '==', String(userId)).onSnapshot(snapshot => {
@@ -200,24 +204,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     const referredUser = doc.data();
                     const item = document.createElement('div');
                     item.className = 'referral-user-item';
-                    const profilePic = referredUser.profilePhotoUrl || referredUser.initialPhotoUrl;
-                    const name = referredUser.customName || referredUser.name || 'Unnamed User';
                     
-                    // Firestore Timestamp কে Date অবজেক্টে পরিণত করা
                     let joinDate = 'N/A';
                     if (referredUser.createdAt && referredUser.createdAt.toDate) {
                         joinDate = referredUser.createdAt.toDate().toLocaleDateString();
                     }
 
                     item.innerHTML = `
-                        <div class="user-pic">
-                           ${profilePic ? `<img src="${profilePic}" alt="DP">` : `<i class='bx bxs-user' style="font-size: 24px;"></i>`}
+                        <div id="ref-pic-${referredUser.id}" class="user-pic">
+                           <i class='bx bxs-user' style="font-size: 24px;"></i>
                         </div>
                         <div class="user-info">
-                            <div class="name">${name}</div>
+                            <div class="name">${referredUser.name || 'Unnamed User'}</div>
                             <div class="date">Joined: ${joinDate}</div>
                         </div>`;
                     listContainer.appendChild(item);
+
+                    const picContainer = document.getElementById(`ref-pic-${referredUser.id}`);
+                    db.ref(`users/${referredUser.id}`).once('value', rtSnapshot => {
+                        if (rtSnapshot.exists()) {
+                            const rtData = rtSnapshot.val();
+                            renderProfilePic(picContainer, rtData.name, rtData.profilePhotoUrl || rtData.initialPhotoUrl);
+                        }
+                    });
                 });
             } else {
                 listContainer.innerHTML = `<p style="text-align:center; color: var(--secondary-text-color);">You haven't referred anyone yet.</p>`;
@@ -226,6 +235,36 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error loading referrals list:", error);
             listContainer.innerHTML = `<p style="text-align:center; color: red;">Could not load referrals. Maybe an index is required.</p>`;
         });
+    }
+
+    function renderProfilePic(container, name, photoUrl) {
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                container.style.backgroundColor = generateColor(name);
+                container.innerHTML = `<span style="color:white; font-size:18px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            container.style.backgroundColor = generateColor(name);
+            container.innerHTML = `<span style="color:white; font-size:18px;">${initial}</span>`;
+        }
+    }
+    
+    function generateColor(str) {
+        let hash = 0;
+        if (!str || str.length === 0) return '#cccccc';
+        for (let i = 0; i < str.length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
     }
 
     initializeReferralPage();
