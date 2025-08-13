@@ -10,7 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    <!-- Firestore SDK যোগ করা হয়েছে -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
@@ -51,7 +50,23 @@
         .leaderboard-info { flex-grow: 1; min-width: 0; }
         .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
         .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
-        .leaderboard-stats .points, .leaderboard-stats .referrals { font-size: 13px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
+        
+        /* ===== CSS পরিবর্তন এখানে করা হয়েছে ===== */
+        .leaderboard-stats .points-badge {
+            background-color: var(--accent-color);
+            color: white; /* লেখার রঙ সাদা করা হয়েছে */
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .leaderboard-stats .referrals { 
+            font-size: 13px; 
+            color: var(--secondary-text-color); 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+        }
         .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
         #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
         .form-group { margin-top: 15px; text-align: left; }
@@ -82,7 +97,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Firestore ব্যবহারের জন্য ভ্যারিয়েবল যোগ করা হয়েছে
     let db, firestore, storage, tg, currentUser = {}, userId;
 
     async function initializeApp() {
@@ -93,9 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             firebase.initializeApp(firebaseConfig);
             
-            // Firebase সার্ভিসগুলো ইনিশিয়ালাইজ করা হয়েছে
-            db = firebase.database(); // Realtime Database
-            firestore = firebase.firestore(); // Firestore
+            db = firebase.database();
+            firestore = firebase.firestore();
             storage = firebase.storage();
             
             tg = window.Telegram.WebApp;
@@ -107,22 +120,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             setupTheme();
             setupNavigation();
-            runUserLogic(); // মূল ফাংশন কল করা হয়েছে
+            runUserLogic();
         } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
-
-    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
+    
+    // ===== জাভাস্ক্রিপ্ট পরিবর্তন এখানে করা হয়েছে =====
     function runUserLogic() {
         const rtdbUserRef = db.ref(`users/${userId}`);
         const firestoreUserRef = firestore.collection('users').doc(String(userId));
 
-        // Realtime Database থেকে ব্যবহারকারীর তথ্য শোনার জন্য লিসেনার সেট করা হয়েছে
         rtdbUserRef.on('value', (rtdbSnapshot) => {
             const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
             const freshUsername = tg.initDataUnsafe?.user?.username || null;
             const freshPhotoUrl = tg.initDataUnsafe?.user?.photo_url || null;
 
-            // ধাপ ১: Realtime Database থেকে ব্যবহারকারীর বেস প্রোফাইল তৈরি করা
             if (rtdbSnapshot.exists()) {
                 currentUser = rtdbSnapshot.val();
                 const updates = {};
@@ -132,36 +143,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Object.keys(updates).length > 0) rtdbUserRef.update(updates);
             } else {
                 const referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
+                currentUser = { id: String(userId), name: freshName, username: freshUsername, points: 0, referrals: 0, referralCode, initialPhotoUrl: freshPhotoUrl, createdAt: new Date().toISOString() };
                 rtdbUserRef.set(currentUser);
             }
 
-            // ধাপ ২: Firestore থেকে আসল পয়েন্ট সংগ্রহ করা
             firestoreUserRef.get().then(firestoreDoc => {
                 let pointsFromFirestore = 0;
+                let referralsFromFirestore = 0; // রেফারেল কাউন্ট ভ্যারিয়েবল
+
                 if (firestoreDoc.exists) {
-                    pointsFromFirestore = firestoreDoc.data().points || 0;
+                    const firestoreData = firestoreDoc.data();
+                    pointsFromFirestore = firestoreData.points || 0;
+                    referralsFromFirestore = firestoreData.referrals || 0; // Firestore থেকে রেফারেল আনা হচ্ছে
                 } else {
-                    // যদি Firestore-এ ব্যবহারকারী না থাকে, তাহলে তৈরি করা হচ্ছে
-                    firestoreUserRef.set({ name: currentUser.name, username: currentUser.username, points: 0 });
+                    firestoreUserRef.set({ name: currentUser.name, username: currentUser.username, points: 0, referrals: 0 });
                 }
 
-                // ধাপ ৩: পয়েন্ট সিঙ্ক করা
-                // এটি হোম পেজ এবং লিডারবোর্ড উভয়ের জন্য ডেটা সঠিক রাখবে
+                const updatesToRtdb = {};
                 if (currentUser.points !== pointsFromFirestore) {
                     currentUser.points = pointsFromFirestore;
-                    // Realtime Database-এ পয়েন্ট আপডেট করা হচ্ছে
-                    rtdbUserRef.child('points').set(pointsFromFirestore);
+                    updatesToRtdb.points = pointsFromFirestore;
+                }
+                // এখানে রেফারেল সংখ্যা সিঙ্ক করা হচ্ছে
+                if (currentUser.referrals !== referralsFromFirestore) {
+                    currentUser.referrals = referralsFromFirestore;
+                    updatesToRtdb.referrals = referralsFromFirestore; 
+                }
+                
+                if(Object.keys(updatesToRtdb).length > 0){
+                    rtdbUserRef.update(updatesToRtdb);
                 }
 
             }).catch(error => {
-                console.error("Firestore থেকে পয়েন্ট আনতে সমস্যা হয়েছে:", error);
+                console.error("Firestore থেকে ডেটা আনতে সমস্যা হয়েছে:", error);
             }).finally(() => {
-                // ধাপ ৪: সব ডেটা ঠিকঠাক পাওয়ার পর পেজ রেন্ডার করা
-                const activeNav = document.querySelector('.nav-item.active');
-                if (activeNav) {
-                    const viewName = activeNav.id.split('-')[1];
-                    if(viewName !== 'referral') {
+                // localStorage থেকে view চেক করা হচ্ছে
+                const requestedView = localStorage.getItem('view');
+                if (requestedView) {
+                    renderView(requestedView);
+                    localStorage.removeItem('view'); // দেখানোর পরে চিহ্নটি মুছে ফেলা হচ্ছে
+                } else {
+                    const activeNav = document.querySelector('.nav-item.active');
+                    if (activeNav) {
+                        const viewName = activeNav.id.split('-')[1];
                         renderView(viewName);
                     }
                 }
@@ -184,14 +208,24 @@ document.addEventListener('DOMContentLoaded', () => {
             item.addEventListener('click', (e) => {
                 const viewName = e.currentTarget.id.split('-')[1];
                 if (viewName === 'referral') {
-                    localStorage.setItem('theme', document.body.className);
                     window.location.href = 'referral.html';
-                } else {
+                } else if (viewName === 'tasks') {
+                    window.location.href = 'tasks.html';
+                }
+                else {
                     renderView(viewName);
                 }
             });
         });
-        renderView('home');
+        
+        // localStorage থেকে view চেক করে পেজ লোড করা
+        const requestedView = localStorage.getItem('view');
+        if (requestedView) {
+            renderView(requestedView);
+            localStorage.removeItem('view');
+        } else {
+            renderView('home');
+        }
     }
     
     function renderView(viewName) {
@@ -205,9 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
         switch(viewName) {
             case 'home': renderHomePage(container); break;
             case 'leaderboard': renderLeaderboardPage(container); break;
-            case 'tasks': window.location.href = '/tasks.html'; break;
             case 'profile': renderProfilePage(container); break;
-            default: container.innerHTML = `<div class="view" style="margin-top:20px;"><p>Content for ${viewName} is coming soon.</p></div>`; break;
+            default: renderHomePage(container); break; // ডিফল্ট হোম পেজ
         }
     }
 
@@ -243,10 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLeaderboardPage(container) {
         container.innerHTML = `
             <div class="page-header">
-                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
+                <button id="back-btn" class="back-button"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Leaderboard</h1>
             </div>
             <div id="leaderboard-list" class="view">Loading...</div>`;
+        document.getElementById('back-btn').addEventListener('click', () => renderView('home'));
         
         db.ref('users').orderByChild('points').limitToLast(50).once('value', snapshot => {
             const list = document.getElementById('leaderboard-list');
@@ -275,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="leaderboard-info">
                             <div class="name">${user.customName || user.name || 'User'}</div>
                             <div class="leaderboard-stats">
-                                <div class="points">${user.points || 0} Points</div>
+                                <div class="points-badge">${user.points || 0} Points</div>
                                 <div class="referrals"><i class='bx bxs-user-plus'></i><span>${user.referrals || 0}</span></div>
                             </div>
                         </div>
@@ -289,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderProfilePage(container) {
         container.innerHTML = `
             <div class="page-header">
-                <button id="back-btn" class="back-button" onclick="renderView('home')"><i class='bx bx-arrow-back'></i></button>
+                <button class="back-button"><i class='bx bx-arrow-back'></i></button>
                 <h1 class="title">Edit Profile</h1>
             </div>
             <div class="view"><div class="profile-card" style="margin-top: 10px;">
@@ -304,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p id="profile-status" class="status-message"></p>
             </div></div>`;
         
+        document.getElementById('back-btn').addEventListener('click', () => renderView('home'));
         renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
         
         document.getElementById('profile-pic-upload').addEventListener('click', () => {
