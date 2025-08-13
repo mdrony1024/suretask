@@ -40,11 +40,11 @@
         .link-box { display: flex; align-items: center; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 5px; padding-left: 15px; }
         .link-box input { flex-grow: 1; border: none; background: transparent; color: var(--text-color); font-size: 14px; outline: none; }
         .copy-btn { background-color: var(--accent-color); color: white; border: none; border-radius: 8px; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
-        .share-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+        /* Twitter বাটন সরানো হয়েছে এবং গ্রিড আপডেট করা হয়েছে */
+        .share-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }
         .share-btn { padding: 12px; border-radius: 12px; border: none; color: white; font-size: 16px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
         .share-btn.telegram { background-color: #2AABEE; }
         .share-btn.whatsapp { background-color: #25D366; }
-        .share-btn.twitter { background-color: #14171A; }
         .referrals-list-section { margin-top: 20px; }
         .search-box { display: flex; align-items: center; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 0 15px; margin-top: 10px; }
         .search-box i { color: var(--secondary-text-color); font-size: 20px; }
@@ -75,7 +75,6 @@
         <div id="nav-tasks" class="nav-item" onclick="window.location.href='tasks.html'"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
         <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
         <div id="nav-referral" class="nav-item active"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
-        <!-- প্রোফাইল নেভিগেশন ঠিক করা হয়েছে -->
         <div id="nav-profile" class="nav-item" onclick="navigateToProfile()"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
     
@@ -121,9 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         firestoreDb.collection('users').doc(String(userId)).onSnapshot((doc) => {
             if (doc.exists) {
                 currentUser = doc.data();
-                 // referralCode, referrals, এবং referralEarnings ফিল্ড না থাকলে ডিফল্ট মান সেট করা হচ্ছে
                 if (!currentUser.referralCode) currentUser.referralCode = userId;
-                if (!currentUser.referrals) currentUser.referrals = 0;
                 if (!currentUser.referralEarnings) currentUser.referralEarnings = 0;
                 
                 renderReferralPage(document.getElementById('app-container'));
@@ -166,12 +163,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="share-buttons">
                         <button id="share-telegram" class="share-btn telegram"><i class='bx bxl-telegram'></i> Telegram</button>
                         <button id="share-whatsapp" class="share-btn whatsapp"><i class='bx bxl-whatsapp'></i> WhatsApp</button>
-                        <button id="share-twitter" class="share-btn twitter"><i class='bx bxl-twitter'></i> Twitter/X</button>
                     </div>
                 </div>
                 <div class="referral-stats-card">
                     <div class="stat-item">
-                        <div id="referral-count" class="count">${currentUser.referrals || 0}</div>
+                        <div id="referral-count" class="count">0</div>
                         <div class="label">Total Referrals</div>
                     </div>
                     <div class="stat-item">
@@ -200,9 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('share-telegram').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`));
         document.getElementById('share-whatsapp').addEventListener('click', () => window.open(`https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(referralLink)}`));
-        document.getElementById('share-twitter').addEventListener('click', () => window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(referralLink)}`));
 
-        // Search functionality
         document.getElementById('search-input').addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const items = document.querySelectorAll('.referral-user-item');
@@ -217,9 +211,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // ===== এই ফাংশনে মূল পরিবর্তন করা হয়েছে =====
     function loadReferralsList() {
         const listContainer = document.getElementById('referrals-list-container');
+        const countElement = document.getElementById('referral-count');
+
         firestoreDb.collection('users').where('referredBy', '==', String(userId)).onSnapshot(snapshot => {
+            // রেফারেল সংখ্যাটি সরাসরি তালিকা থেকে গণনা করা হচ্ছে
+            const referralCount = snapshot.size;
+            if (countElement) {
+                countElement.innerText = referralCount;
+            }
+
             if (!snapshot.empty) {
                 listContainer.innerHTML = '';
                 snapshot.forEach(doc => {
@@ -294,12 +297,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function navigateToProfile() {
-        // এই ফাংশনটি ব্যবহারকারীকে index.html পেজে পাঠাবে এবং প্রোফাইল ভিউ দেখানোর জন্য একটি চিহ্ন রেখে দেবে।
         localStorage.setItem('view', 'profile');
         window.location.href = 'index.html';
     }
 
-    // অ্যাপ চালু করার জন্য মূল ফাংশন কল
     initializeApp();
 });
 </script>
