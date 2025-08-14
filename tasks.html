@@ -7,7 +7,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
@@ -26,70 +25,36 @@
         .page-header { display: flex; align-items: center; padding: 15px; color: var(--text-color); }
         .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
         .page-header .title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .task-card {
-            background-color: var(--card-bg-color);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 15px;
-            box-shadow: 0 4px_10px rgba(0,0,0,0.05);
-        }
+        .task-card { background-color: var(--card-bg-color); border-radius: 15px; padding: 20px; margin-top: 15px; box-shadow: 0 4px_10px rgba(0,0,0,0.05); }
         .task-info h3 { margin: 0; font-size: 18px; font-weight: 600; }
-        .task-info .points {
-            color: var(--success);
-            font-weight: 600;
-            font-size: 16px;
-            margin-top: 5px;
-        }
-        .task-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .task-btn {
-            padding: 12px;
-            border-radius: 12px;
-            border: none;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .join-btn {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        .verify-btn {
-            background-color: var(--dark-card-bg);
-            color: var(--dark-text);
-            border: 1px solid var(--border-color);
-        }
-        .verify-btn.completed {
-            background-color: var(--success);
-            color: white;
-            cursor: not-allowed;
-        }
-        .no-tasks {
-            text-align: center;
-            margin-top: 50px;
-            color: var(--secondary-text-color);
-        }
+        .task-info .points { color: var(--success); font-weight: 600; font-size: 16px; margin-top: 5px; }
+        .task-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .task-btn { padding: 12px; border-radius: 12px; border: none; font-size: 16px; font-weight: 500; cursor: pointer; transition: background-color 0.3s; }
+        .join-btn { background-color: var(--accent-color); color: white; }
+        .verify-btn { background-color: var(--dark-card-bg); color: var(--dark-text); border: 1px solid var(--border-color); }
+        .no-tasks { text-align: center; margin-top: 50px; color: var(--secondary-text-color); }
     </style>
 </head>
 <body class="dark">
     
     <div class="page-header">
-        <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
-        <h1 class="title"><i class='bx bx-spreadsheet'></i> Available Tasks</h1>
+        <button class="back-button" onclick="window.location.href='tasks_home.html'"><i class='bx bx-arrow-back'></i></button>
+        <h1 id="page-title" class="title">Tasks</h1>
     </div>
 
-    <div id="tasks-container" class="view">
-        <!-- টাস্কগুলো এখানে লোড হবে -->
-    </div>
+    <div id="tasks-container" class="view"></div>
     
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let tg, firestoreDb, userId;
+    // ক্যাটাগরির নামগুলোকে ম্যাপ করা হচ্ছে
+    const categoryNames = {
+        group: "TG Group Tasks",
+        channel: "TG Channel Tasks",
+        tg_views: "Telegram Views Tasks",
+        yt_views: "YouTube Views Tasks",
+        bot_start: "Bot START Tasks"
+    };
 
     async function initializeApp() {
         try {
@@ -102,32 +67,40 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tg = window.Telegram.WebApp;
             tg.ready();
-            tg.expand();
-            userId = tg.initDataUnsafe?.user?.id || 'test_user_tasks';
             
             const savedTheme = localStorage.getItem('theme') || 'dark';
             document.body.className = savedTheme;
 
-            loadTasks();
+            // URL থেকে ক্যাটাগরি নেওয়া হচ্ছে
+            const urlParams = new URLSearchParams(window.location.search);
+            const category = urlParams.get('category');
+            
+            if (category) {
+                document.getElementById('page-title').innerText = categoryNames[category] || "Tasks";
+                loadTasks(category);
+            } else {
+                document.getElementById('tasks-container').innerHTML = `<div class="no-tasks"><h3>No category selected.</h3><p>Please go back and choose a task type.</p></div>`;
+            }
+
         } catch (error) {
             document.getElementById('tasks-container').innerHTML = `<h1 class="no-tasks">Page Failed to Load</h1><p style="text-align:center;">${error.message}</p>`;
         }
     }
 
     // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
-    function loadTasks() {
+    function loadTasks(category) {
         const container = document.getElementById('tasks-container');
         container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
         
-        // Firestore থেকে টাস্ক আনার কোড থেকে .where('active', '==', true) ফিল্টারটি সরানো হয়েছে
-        firestoreDb.collection('tasks').get()
+        // Firestore থেকে নির্দিষ্ট ক্যাটাগরির টাস্ক ফিল্টার করে আনা হচ্ছে
+        firestoreDb.collection('tasks').where('category', '==', category).get()
             .then(snapshot => {
                 if (snapshot.empty) {
-                    container.innerHTML = `<div class="no-tasks"><h3>No tasks available right now.</h3><p>Please check back later.</p></div>`;
+                    container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3><p>Please check back later.</p></div>`;
                     return;
                 }
                 
-                container.innerHTML = ''; // পুরোনো লেখা মুছে ফেলা হচ্ছে
+                container.innerHTML = '';
                 snapshot.forEach(doc => {
                     const task = doc.data();
                     const taskId = doc.id;
@@ -136,14 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(error => {
                 console.error("Error loading tasks:", error);
-                container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3><p>Please try again later.</p></div>`;
+                container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3><p>${error.message}</p></div>`;
             });
     }
 
     function renderTaskCard(container, task, taskId) {
         const card = document.createElement('div');
         card.className = 'task-card';
-
         card.innerHTML = `
             <div class="task-info">
                 <h3>${task.title || 'Untitled Task'}</h3>
@@ -154,24 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button id="verify-${taskId}" class="task-btn verify-btn">Verify</button>
             </div>
         `;
-        
         container.appendChild(card);
-
         const joinBtn = document.getElementById(`join-${taskId}`);
-        const verifyBtn = document.getElementById(`verify-${taskId}`);
-
         joinBtn.addEventListener('click', () => {
-            if (task.link && task.link.trim() !== '') {
-                tg.openLink(task.link);
-                localStorage.setItem(`task_joined_${taskId}`, 'true');
+            if (task.url && task.url.trim() !== '') {
+                tg.openLink(task.url);
             } else {
                 tg.showAlert('Link for this task is not available.');
             }
         });
-        
-        verifyBtn.addEventListener('click', () => {
-            tg.showAlert('Verification feature is coming soon!');
-        });
+        document.getElementById(`verify-${taskId}`).addEventListener('click', () => tg.showAlert('Verification feature is coming soon!'));
     }
 
     initializeApp();
