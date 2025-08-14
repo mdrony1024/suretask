@@ -51,10 +51,9 @@
         .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
         .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
         
-        /* ===== CSS পরিবর্তন এখানে করা হয়েছে ===== */
         .leaderboard-stats .points-badge {
             background-color: var(--accent-color);
-            color: white; /* লেখার রঙ সাদা করা হয়েছে */
+            color: white; 
             padding: 4px 10px;
             border-radius: 12px;
             font-size: 13px;
@@ -124,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
     
-    // ===== জাভাস্ক্রিপ্ট পরিবর্তন এখানে করা হয়েছে =====
     function runUserLogic() {
         const rtdbUserRef = db.ref(`users/${userId}`);
         const firestoreUserRef = firestore.collection('users').doc(String(userId));
@@ -149,12 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             firestoreUserRef.get().then(firestoreDoc => {
                 let pointsFromFirestore = 0;
-                let referralsFromFirestore = 0; // রেফারেল কাউন্ট ভ্যারিয়েবল
+                let referralsFromFirestore = 0;
 
                 if (firestoreDoc.exists) {
                     const firestoreData = firestoreDoc.data();
                     pointsFromFirestore = firestoreData.points || 0;
-                    referralsFromFirestore = firestoreData.referrals || 0; // Firestore থেকে রেফারেল আনা হচ্ছে
+                    referralsFromFirestore = firestoreData.referrals || 0;
                 } else {
                     firestoreUserRef.set({ name: currentUser.name, username: currentUser.username, points: 0, referrals: 0 });
                 }
@@ -164,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentUser.points = pointsFromFirestore;
                     updatesToRtdb.points = pointsFromFirestore;
                 }
-                // এখানে রেফারেল সংখ্যা সিঙ্ক করা হচ্ছে
                 if (currentUser.referrals !== referralsFromFirestore) {
                     currentUser.referrals = referralsFromFirestore;
                     updatesToRtdb.referrals = referralsFromFirestore; 
@@ -177,11 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(error => {
                 console.error("Firestore থেকে ডেটা আনতে সমস্যা হয়েছে:", error);
             }).finally(() => {
-                // localStorage থেকে view চেক করা হচ্ছে
                 const requestedView = localStorage.getItem('view');
                 if (requestedView) {
                     renderView(requestedView);
-                    localStorage.removeItem('view'); // দেখানোর পরে চিহ্নটি মুছে ফেলা হচ্ছে
+                    localStorage.removeItem('view');
                 } else {
                     const activeNav = document.querySelector('.nav-item.active');
                     if (activeNav) {
@@ -203,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
     }
 
+    // ===== মূল পরিবর্তন এখানে করা হয়েছে =====
     function setupNavigation() {
         document.querySelectorAll('.nav-item[id]').forEach(item => {
             item.addEventListener('click', (e) => {
@@ -210,7 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (viewName === 'referral') {
                     window.location.href = 'referral.html';
                 } else if (viewName === 'tasks') {
-                    window.location.href = 'tasks.html';
+                    // টাস্ক বাটনে ক্লিক করলে এখন tasks_home.html পেজে যাবে
+                    window.location.href = 'tasks_home.html';
                 }
                 else {
                     renderView(viewName);
@@ -218,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // localStorage থেকে view চেক করে পেজ লোড করা
         const requestedView = localStorage.getItem('view');
         if (requestedView) {
             renderView(requestedView);
@@ -240,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'home': renderHomePage(container); break;
             case 'leaderboard': renderLeaderboardPage(container); break;
             case 'profile': renderProfilePage(container); break;
-            default: renderHomePage(container); break; // ডিফল্ট হোম পেজ
+            default: renderHomePage(container); break;
         }
     }
 
