@@ -1,28 +1,28 @@
 const admin = require('firebase-admin');
 
 // Firebase Admin SDK ইনিশিয়ালাইজেশন
-// নিশ্চিত করুন যে আপনার এনভায়রনমেন্ট ভ্যারিয়েবল সঠিকভাবে সেট করা আছে
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    }),
-  });
+try {
+  if (!admin.apps.length) {
+    // FIREBASE_ADMIN_CONFIG ভ্যারিয়েবল থেকে কনফিগারেশন পার্স করা হচ্ছে
+    const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CONFIG);
+    
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  }
+} catch (error) {
+  console.error('Firebase Admin SDK Initialization Error:', error);
 }
 
 const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 module.exports = async (req, res) => {
-  // মেথড POST কিনা তা চেক করা হচ্ছে
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
   try {
-    // বডি থেকে ডেটা নেওয়া হচ্ছে
     const { userId, title, url, category, quantity, pointsPerTask } = req.body;
 
     // --- ডেটা ভ্যালিডেশন ---
@@ -40,29 +40,24 @@ module.exports = async (req, res) => {
     const userRef = firestore.collection('users').doc(String(userId));
 
     // --- Firestore Transaction শুরু হচ্ছে ---
-    // Transaction ব্যবহার করা হয় যাতে একাধিক ডেটা অপারেশন একসাথে সফল বা ব্যর্থ হয়,
-    // যা ডেটাবেসের সঙ্গতি বজায় রাখে।
     await firestore.runTransaction(async (transaction) => {
       const userDoc = await transaction.get(userRef);
 
       if (!userDoc.exists) {
-        throw new Error('User not found.'); // এটি একটি কাস্টম এরর তৈরি করবে
+        throw new Error('User not found.');
       }
 
       const userData = userDoc.data();
       const currentUserPoints = userData.points || 0;
 
-      // ব্যবহারকারীর যথেষ্ট পয়েন্ট আছে কিনা তা চেক করা হচ্ছে
       if (currentUserPoints < totalCost) {
         throw new Error("You don't have enough points to create this promotion.");
       }
 
-      // ব্যবহারকারীর পয়েন্ট থেকে মোট খরচ বিয়োগ করা হচ্ছে
       const newPoints = currentUserPoints - totalCost;
       transaction.update(userRef, { points: newPoints });
 
-      // `promotions` কালেকশনে নতুন ডকুমেন্ট তৈরি করা হচ্ছে
-      const promotionRef = firestore.collection('promotions').doc(); // নতুন ডকুমেন্ট রেফারেন্স
+      const promotionRef = firestore.collection('promotions').doc();
       transaction.set(promotionRef, {
         title,
         url,
@@ -72,15 +67,13 @@ module.exports = async (req, res) => {
         completedCount: 0,
         creatorId: String(userId),
         status: 'active',
-        createdAt: FieldValue.serverTimestamp(), // বর্তমান সার্ভার সময়
+        createdAt: FieldValue.serverTimestamp(),
       });
     });
     
-    // সফলভাবে সম্পন্ন হলে একটি বার্তা পাঠানো হচ্ছে
     return res.status(200).json({ success: true, message: 'Promotion created successfully!' });
 
   } catch (error) {
-    // কোনো এরর হলে বার্তা পাঠানো হচ্ছে
     console.error('Error creating promotion:', error);
     return res.status(500).json({ success: false, message: error.message || 'An internal error occurred.' });
   }
