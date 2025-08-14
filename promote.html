@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SureTask - Create Promotion</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+        :root {
+            --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; 
+            --secondary-text: #9ca3af; --border-color: #4b5563;
+            --accent-color: #5856d6; --success: #22c55e; --danger: #ef4444;
+        }
+        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--dark-bg); color: var(--dark-text); }
+        .page-header { display: flex; align-items: center; padding: 15px; }
+        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--dark-text); margin-right: 10px; }
+        .page-header .title { font-size: 20px; font-weight: 600; }
+        .form-container { padding: 15px; }
+        .form-card { background-color: var(--dark-card-bg); border-radius: 15px; padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            background-color: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--dark-text);
+            font-size: 16px;
+        }
+        .cost-summary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--dark-bg);
+            border-radius: 10px;
+            border: 1px solid var(--accent-color);
+        }
+        .cost-summary p { display: flex; justify-content: space-between; margin: 8px 0; }
+        .cost-summary span { font-weight: 600; }
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #status-message { text-align: center; margin-top: 15px; font-weight: 500; }
+    </style>
+</head>
+<body class="dark">
+
+    <div class="page-header">
+        <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
+        <h1 class="title">Create a New Promotion</h1>
+    </div>
+
+    <div class="form-container">
+        <div class="form-card">
+            <div class="form-group">
+                <label for="task-title">Promotion Title</label>
+                <input type="text" id="task-title" placeholder="e.g., Join my awesome channel!">
+            </div>
+            <div class="form-group">
+                <label for="task-url">Promotion URL</label>
+                <input type="text" id="task-url" placeholder="https://t.me/your_link">
+            </div>
+            <div class="form-group">
+                <label for="task-category">Category</label>
+                <select id="task-category">
+                    <option value="group">TG Group Member</option>
+                    <option value="channel">TG Channel Member</option>
+                    <option value="tg_views">Telegram Views</option>
+                    <option value="yt_views">YouTube Views</option>
+                    <option value="bot_start">Bot START</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="task-quantity">How many users needed?</label>
+                <input type="number" id="task-quantity" value="10" min="5">
+            </div>
+            <div class="form-group">
+                <label for="points-per-task">Points per user</label>
+                <input type="number" id="points-per-task" value="10" min="5">
+            </div>
+            <div class="cost-summary">
+                <p>Your Current Points: <span id="user-points">Loading...</span></p>
+                <p>Total Cost: <span id="total-cost">100</span></p>
+            </div>
+            <button id="submit-promotion" class="submit-btn">Submit Promotion</button>
+            <p id="status-message"></p>
+        </div>
+    </div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let tg, firestoreDb, userId, userPoints = 0;
+
+    const quantityInput = document.getElementById('task-quantity');
+    const pointsInput = document.getElementById('points-per-task');
+    const totalCostEl = document.getElementById('total-cost');
+    const userPointsEl = document.getElementById('user-points');
+    const submitBtn = document.getElementById('submit-promotion');
+    const statusEl = document.getElementById('status-message');
+
+    async function initializeApp() {
+        // Firebase এবং Telegram Web App ইনিশিয়ালাইজ করার কোড...
+        // ... (আগের ফাইলগুলো থেকে কপি করুন) ...
+        
+        // ডেমো ডেটা:
+        userId = 'test_user'; 
+        loadUserPoints();
+
+        quantityInput.addEventListener('input', updateCost);
+        pointsInput.addEventListener('input', updateCost);
+        submitBtn.addEventListener('click', createPromotion);
+    }
+
+    function loadUserPoints() {
+        // এই ফাংশনটি Firestore থেকে ব্যবহারকারীর বর্তমান পয়েন্ট লোড করবে
+        userPoints = 5000; // উদাহরণ
+        userPointsEl.innerText = userPoints;
+    }
+
+    function updateCost() {
+        const quantity = parseInt(quantityInput.value) || 0;
+        const points = parseInt(pointsInput.value) || 0;
+        totalCostEl.innerText = quantity * points;
+    }
+
+    function createPromotion() {
+        const totalCost = parseInt(totalCostEl.innerText);
+        if (userPoints < totalCost) {
+            statusEl.innerText = "You don't have enough points!";
+            statusEl.style.color = 'var(--danger)';
+            return;
+        }
+
+        // এখানে Cloud Function কল করার কোড লিখতে হবে
+        statusEl.innerText = "Submitting... (This is a demo)";
+        statusEl.style.color = 'var(--success)';
+        // এই ফাংশনটি বাস্তবে আপনার পয়েন্ট কেটে নিয়ে `promotions` কালেকশনে ডেটা সেভ করবে।
+    }
+    
+    initializeApp();
+});
+</script>
+
+</body>
+</html>
