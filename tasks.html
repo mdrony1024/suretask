@@ -12,6 +12,7 @@
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
+        /* ... আপনার CSS কোড অপরিবর্তিত থাকবে ... */
         :root {
             --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
             --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
@@ -46,8 +47,7 @@
     
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let tg, firestoreDb, userId;
-    // ক্যাটাগরির নামগুলোকে ম্যাপ করা হচ্ছে
+    let tg, firestoreDb;
     const categoryNames = {
         group: "TG Group Tasks",
         channel: "TG Channel Tasks",
@@ -71,13 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'dark';
             document.body.className = savedTheme;
 
-            // URL থেকে ক্যাটাগরি নেওয়া হচ্ছে
             const urlParams = new URLSearchParams(window.location.search);
             const category = urlParams.get('category');
             
             if (category) {
                 document.getElementById('page-title').innerText = categoryNames[category] || "Tasks";
-                loadTasks(category);
+                loadAllTasks(category); // নতুন ফাংশন কল করা হচ্ছে
             } else {
                 document.getElementById('tasks-container').innerHTML = `<div class="no-tasks"><h3>No category selected.</h3><p>Please go back and choose a task type.</p></div>`;
             }
@@ -88,29 +87,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
-    function loadTasks(category) {
+    async function loadAllTasks(category) {
         const container = document.getElementById('tasks-container');
         container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
-        
-        // Firestore থেকে নির্দিষ্ট ক্যাটাগরির টাস্ক ফিল্টার করে আনা হচ্ছে
-        firestoreDb.collection('tasks').where('category', '==', category).get()
-            .then(snapshot => {
-                if (snapshot.empty) {
-                    container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3><p>Please check back later.</p></div>`;
-                    return;
-                }
-                
-                container.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const task = doc.data();
-                    const taskId = doc.id;
-                    renderTaskCard(container, task, taskId);
-                });
-            })
-            .catch(error => {
-                console.error("Error loading tasks:", error);
-                container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3><p>${error.message}</p></div>`;
+
+        try {
+            // Promise.all ব্যবহার করে দুটি কোয়েরি একসাথে চালানো হচ্ছে
+            const [adminTasksSnapshot, promotionTasksSnapshot] = await Promise.all([
+                firestoreDb.collection('tasks').where('category', '==', category).get(),
+                firestoreDb.collection('promotions').where('category', '==', category).where('status', '==', 'active').get()
+            ]);
+
+            const allTasks = [];
+
+            // অ্যাডমিনের টাস্কগুলো যোগ করা হচ্ছে
+            adminTasksSnapshot.forEach(doc => {
+                allTasks.push({ id: doc.id, data: doc.data() });
             });
+
+            // ব্যবহারকারীদের প্রমোশনগুলো যোগ করা হচ্ছে
+            promotionTasksSnapshot.forEach(doc => {
+                const promoData = doc.data();
+                // প্রমোশনের ডেটাকে টাস্কের মতো একই কাঠামোতে আনা হচ্ছে
+                const taskData = {
+                    title: promoData.title,
+                    points: promoData.pointsPerTask,
+                    url: promoData.url
+                };
+                allTasks.push({ id: doc.id, data: taskData, isPromotion: true });
+            });
+
+            if (allTasks.length === 0) {
+                container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3><p>Please check back later.</p></div>`;
+                return;
+            }
+            
+            container.innerHTML = '';
+            // সব টাস্ক (অ্যাডমিন + প্রমোশন) দেখানো হচ্ছে
+            allTasks.forEach(task => {
+                renderTaskCard(container, task.data, task.id);
+            });
+
+        } catch (error) {
+            console.error("Error loading tasks:", error);
+            container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3><p>${error.message}</p></div>`;
+        }
     }
 
     function renderTaskCard(container, task, taskId) {
