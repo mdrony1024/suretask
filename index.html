@@ -50,22 +50,8 @@
         .leaderboard-info { flex-grow: 1; min-width: 0; }
         .leaderboard-info .name { font-weight: 600; font-size: 16px; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
         .leaderboard-stats { display: flex; align-items: center; gap: 15px; margin-top: 4px; }
-        
-        .leaderboard-stats .points-badge {
-            background-color: var(--accent-color);
-            color: white; 
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-        .leaderboard-stats .referrals { 
-            font-size: 13px; 
-            color: var(--secondary-text-color); 
-            display: flex; 
-            align-items: center; 
-            gap: 4px; 
-        }
+        .leaderboard-stats .points-badge { background-color: var(--accent-color); color: white; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 500; }
+        .leaderboard-stats .referrals { font-size: 13px; color: var(--secondary-text-color); display: flex; align-items: center; gap: 4px; }
         .leaderboard-item.rank-1 { border: 2px solid var(--gold); }
         #profile-pic-upload { position: absolute; bottom: 0; right: 0; background: var(--accent-color); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--card-bg-color); }
         .form-group { margin-top: 15px; text-align: left; }
@@ -85,10 +71,11 @@
     
     <div id="app-container"></div>
     
+    <!-- ===== নেভিগেশন বার পরিবর্তন করা হয়েছে ===== -->
     <nav class="bottom-nav">
         <div id="nav-home" class="nav-item active"><div class="icon"><i class='bx bxs-home'></i></div><span>Home</span></div>
         <div id="nav-tasks" class="nav-item"><div class="icon"><i class='bx bxs-server'></i></div><span>Tasks</span></div>
-        <div id="nav-withdraw" class="nav-item"><div class="icon"><i class='bx bxs-wallet'></i></div><span>Withdraw</span></div>
+        <div id="nav-mytasks" class="nav-item"><div class="icon"><i class='bx bxs-briefcase-alt-2'></i></div><span>My Task</span></div>
         <div id="nav-referral" class="nav-item"><div class="icon"><i class='bx bxs-user-plus'></i></div><span>Referral</span></div>
         <div id="nav-profile" class="nav-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>Profile</span></div>
     </nav>
@@ -199,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themeIcon) themeIcon.className = document.body.classList.contains('dark') ? 'bx bxs-sun' : 'bx bxs-moon';
     }
 
-    // ===== মূল পরিবর্তন এখানে করা হয়েছে =====
+    // ===== জাভাস্ক্রিপ্ট পরিবর্তন করা হয়েছে =====
     function setupNavigation() {
         document.querySelectorAll('.nav-item[id]').forEach(item => {
             item.addEventListener('click', (e) => {
@@ -207,8 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (viewName === 'referral') {
                     window.location.href = 'referral.html';
                 } else if (viewName === 'tasks') {
-                    // টাস্ক বাটনে ক্লিক করলে এখন tasks_home.html পেজে যাবে
                     window.location.href = 'tasks_home.html';
+                } else if (viewName === 'mytasks') {
+                    window.location.href = 'promote.html';
                 }
                 else {
                     renderView(viewName);
@@ -312,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </a>`;
                 list.appendChild(item);
-                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl || user.initialPhotoUrl);
+                renderProfilePic(document.getElementById(`leaderboard-pic-${user.id}`), user.customName || user.name, user.profilePhotoUrl || currentUser.initialPhotoUrl);
             });
         });
     }
