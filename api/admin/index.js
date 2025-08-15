@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
     try {
         switch (type) {
             case 'users':
-                // --- ইউজারদের লজিক ---
+                // --- ইউজারদের লজিক (অপরিবর্তিত) ---
                 if (req.method === 'GET') {
                     const { search } = req.query;
                     let query = firestore.collection('users');
@@ -65,15 +65,25 @@ module.exports = async (req, res) => {
                 break;
 
             case 'tasks':
-                // --- টাস্কের লজিক ---
+                // --- টাস্কের লজিক (আপডেট করা হয়েছে) ---
                 if (req.method === 'GET') {
-                    const snapshot = await firestore.collection('tasks').get();
+                    const snapshot = await firestore.collection('tasks').orderBy('createdAt', 'desc').get();
                     const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     return res.status(200).json(tasks);
                 }
                 if (req.method === 'POST') {
-                    const { title, points, taskType, url } = req.body;
-                    await firestore.collection('tasks').add({ title, points, taskType, url, isActive: true, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+                    const { title, points, category, taskType, url } = req.body;
+                     if (!title || !points || !category || !taskType || !url) {
+                        return res.status(400).json({ message: 'All fields are required for creating a task.' });
+                    }
+                    await firestore.collection('tasks').add({ 
+                        title, 
+                        points, 
+                        category, // নতুন ফিল্ড
+                        taskType, // নতুন ফিল্ড
+                        url, 
+                        createdAt: admin.firestore.FieldValue.serverTimestamp() 
+                    });
                     return res.status(201).json({ message: 'Task created' });
                 }
                 if (req.method === 'DELETE') {
@@ -84,7 +94,7 @@ module.exports = async (req, res) => {
                 break;
             
             case 'promotions':
-                // --- প্রোমোশনের লজিক ---
+                // --- প্রোমোশনের লজিক (অপরিবর্তিত) ---
                 if (req.method === 'GET') {
                     const snapshot = await firestore.collection('promotions').orderBy('createdAt', 'desc').get();
                     const promotions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -98,16 +108,18 @@ module.exports = async (req, res) => {
                 break;
 
             case 'settings':
-                 // --- সেটিংসের লজিক ---
+                 // --- সেটিংসের লজিক (আপডেট করা হয়েছে) ---
                 const settingsRef = firestore.collection('settings').doc('global');
                 if (req.method === 'GET') {
                     const doc = await settingsRef.get();
-                    const settings = doc.exists ? doc.data() : { referralCommission: 20, minReward: 1, maxReward: 1000 };
-                    return res.status(200).json(settings);
+                    return res.status(200).json(doc.exists ? doc.data() : {});
                 }
                 if (req.method === 'POST') {
-                    const { referralCommission, minReward, maxReward } = req.body;
-                    await settingsRef.set({ referralCommission: Number(referralCommission), minReward: Number(minReward), maxReward: Number(maxReward) }, { merge: true });
+                    const { referralCommission, promotionSettings } = req.body; // promotionSettings এখন একটি অবজেক্ট
+                    if (referralCommission === undefined || promotionSettings === undefined) {
+                         return res.status(400).json({ message: 'Invalid settings data.' });
+                    }
+                    await settingsRef.set({ referralCommission, promotionSettings }, { merge: true });
                     return res.status(200).json({ message: 'Settings updated' });
                 }
                 break;
@@ -115,7 +127,7 @@ module.exports = async (req, res) => {
             default:
                 return res.status(400).json({ message: 'Invalid admin action type' });
         }
-        // যদি কোনো কারণে কোনো if ব্লকে না ঢোকে, তাহলে Method Not Allowed পাঠানো হবে
+        
         return res.status(405).json({ message: 'Method Not Allowed for this type' });
 
     } catch (error) {
