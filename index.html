@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { document.getElementById('app-container').innerHTML = `<h1>App Failed to Load</h1><p>${error.message}</p>`; }
     }
     
+    // ===== এই ফাংশনটি আপডেট করা হয়েছে =====
     async function runUserLogic() {
         try {
             const rtdbUserRef = db.ref(`users/${userId}`);
@@ -160,13 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 referrals: currentUser.referrals
             });
 
-        } catch (error) {
-            console.error("User logic failed:", error);
-            document.getElementById('app-container').innerHTML = `<h1>Error</h1><p>Could not load user data.</p>`;
-        } finally {
             const requestedView = localStorage.getItem('view') || 'home';
             renderView(requestedView);
             localStorage.removeItem('view');
+
+        } catch (error) {
+            console.error("User logic failed:", error);
+            document.getElementById('app-container').innerHTML = `<h1>Error</h1><p>Could not load user data.</p>`;
         }
     }
 
@@ -250,11 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 list.innerHTML = '<p style="text-align:center;">Leaderboard is empty.</p>';
                 return;
             }
-            
             const users = [];
-            snapshot.forEach(child => {
-                users.push(child.val());
-            });
+            snapshot.forEach(child => { users.push(child.val()); });
             users.sort((a, b) => (b.points || 0) - (a.points || 0));
             list.innerHTML = '';
             
@@ -264,11 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = `leaderboard-item rank-${rank}`;
                 const profileLink = user.username ? `https://t.me/${user.username}` : `tg://user?id=${user.id}`;
                 let rankDisplay = `#${rank}`;
-                if(rank <= 3) {
+                if (rank <= 3) {
                     const iconClass = rank === 1 ? 'bxs-crown' : (rank === 2 ? 'bxs-shield-alt-2' : 'bxs-star');
                     rankDisplay = `<div class="rank-icon"><i class='bx ${iconClass}'></i></div>`;
                 }
-
                 item.innerHTML = `
                     <div class="leaderboard-rank">${rankDisplay}</div>
                     <a href="${profileLink}" target="_blank" style="display:contents;">
@@ -288,27 +285,117 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProfilePage(container) {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        const totalMyTask = currentUser.promotionsCount || 0; 
+        const totalRefer = currentUser.referrals || 0;
+        container.innerHTML = `
+            <div class="view profile-view">
+                <div class="profile-header">
+                    <div id="profile-page-pic" class="pic"></div>
+                    <div class="name">${currentUser.customName || currentUser.name}</div>
+                    <div class="points-label">${currentUser.points || 0} Available points</div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="value">${totalMyTask}</div>
+                        <div class="label">Total My Task</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value">${totalRefer}</div>
+                        <div class="label">Total Refer</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value">${currentUser.points || 0}</div>
+                        <div class="label">Balance</div>
+                    </div>
+                </div>
+                <div class="profile-menu">
+                    <div class="menu-item" onclick="alert('Coming Soon!')"><div class="icon"><i class='bx bx-rocket'></i></div><span>Coming Soon!!</span><div class="arrow"><i class='bx bx-chevron-right'></i></div></div>
+                    <div onclick="showOldEditProfile()" class="menu-item"><div class="icon"><i class='bx bxs-user-circle'></i></div><span>My Profile</span><div class="arrow"><i class='bx bx-chevron-right'></i></div></div>
+                    <a href="history.html" class="menu-item"><div class="icon"><i class='bx bx-history'></i></div><span>History</span><div class="arrow"><i class='bx bx-chevron-right'></i></div></a>
+                    <div class="menu-item" onclick="alert('Coming Soon!')"><div class="icon"><i class='bx bxs-wallet'></i></div><span>My Wallet</span><div class="arrow"><i class='bx bx-chevron-right'></i></div></div>
+                    <div class="menu-item" onclick="alert('Coming Soon!')"><div class="icon"><i class='bx bxs-bar-chart-alt-2'></i></div><span>My Statistics</span><div class="arrow"><i class='bx bx-chevron-right'></i></div></div>
+                </div>
+            </div>`;
+        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
     }
     
     function showOldEditProfile() {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        const container = document.getElementById('app-container');
+        container.innerHTML = `
+            <div class="page-header">
+                <button class="back-button" onclick="renderView('profile')"><i class='bx bx-arrow-back'></i></button>
+                <h1 class="title">Edit Profile</h1>
+            </div>
+            <div class="view"><div class="profile-card" style="margin-top: 10px;">
+                <div id="profile-page-pic" class="profile-pic" style="margin-top:0;">
+                     <div id="profile-pic-upload"><i class='bx bxs-camera'></i></div>
+                </div>
+                <div class="form-group">
+                    <label for="username-input">Display Name</label>
+                    <input type="text" id="username-input" value="${currentUser.customName || currentUser.name || ''}" placeholder="Enter your name">
+                </div>
+                <button id="save-profile-btn" class="action-button">Save Changes</button>
+                <p id="profile-status" class="status-message"></p>
+            </div></div>`;
+        renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
+        document.getElementById('profile-pic-upload').addEventListener('click', () => document.getElementById('photo-upload-input').click());
+        document.getElementById('photo-upload-input').addEventListener('change', handlePhotoUpload);
+        document.getElementById('save-profile-btn').addEventListener('click', saveProfileChanges);
     }
 
     function handlePhotoUpload(event) {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        const file = event.target.files[0];
+        if (!file) return;
+        const statusEl = document.getElementById('profile-status');
+        statusEl.textContent = 'Uploading...'; statusEl.className = 'status-message';
+        const storageRef = storage.ref(`profile_pictures/${userId}`);
+        storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(downloadURL => {
+            db.ref(`users/${userId}/profilePhotoUrl`).set(downloadURL);
+            statusEl.textContent = 'Photo updated!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Upload failed.'; statusEl.className = 'status-message status-error';
+        });
     }
     
     function saveProfileChanges() {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        const newName = document.getElementById('username-input').value.trim();
+        const statusEl = document.getElementById('profile-status');
+        if (!newName) { statusEl.textContent = 'Name cannot be empty.'; statusEl.className = 'status-message status-error'; return; }
+        statusEl.textContent = 'Saving...';
+        db.ref(`users/${userId}/customName`).set(newName).then(() => {
+            statusEl.textContent = 'Profile saved!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Failed to save.'; statusEl.className = 'status-message status-error';
+        });
     }
 
     function renderProfilePic(container, name, photoUrl) {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                container.style.backgroundColor = generateColor(name);
+                container.innerHTML = `<span style="color:white; font-size:40px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            container.style.backgroundColor = generateColor(name);
+            container.innerHTML = `<span style="color:white; font-size:40px;">${initial}</span>`;
+        }
     }
 
     function generateColor(str) {
-        // ... এই ফাংশনটি অপরিবর্তিত ...
+        let hash = 0;
+        for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
     }
 
     initializeApp();
