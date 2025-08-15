@@ -43,29 +43,27 @@
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; word-break: break-all; }
         .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .form-card input, .form-card select, .form-card button, .form-card label { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif;}
-        .form-card label { border: none; text-align: left; padding: 0; margin-bottom: 5px; }
+        .form-card label { border: none; text-align: left; padding: 0; margin-bottom: 5px; font-weight: 500;}
         .form-card button { background: var(--primary-color); color: white; border: none; font-weight: 500; cursor: pointer; }
         .action-btn { padding: 6px 10px; margin: 2px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; background: white; }
         .ban-btn { color: var(--danger-color); border-color: var(--danger-color); }
         .unban-btn { color: var(--success-color); border-color: var(--success-color); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .category-setting-card { margin-top: 15px; }
+        .category-setting-card h4 { margin-top: 0; }
 
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .content { margin-left: 0; }
             #menu-toggle { display: inline-block; }
+            .grid-2 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
     <section id="login-section">
-        <div class="login-box">
-            <h2>Admin Panel Login</h2>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button id="login-btn">Login</button>
-            <p id="login-error" style="color:red;"></p>
-        </div>
+        <!-- Login form অপরিবর্তিত -->
     </section>
 
     <section id="admin-panel">
@@ -92,190 +90,74 @@
     </section>
 
 <script>
-    let firebaseApp, auth, firestoreDb, idToken;
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const response = await fetch('/api/config');
-            const firebaseConfig = await response.json();
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            firestoreDb = firebase.firestore();
-            
-            auth.onAuthStateChanged(handleAuthState);
-            document.getElementById('login-btn').addEventListener('click', handleLogin);
-            document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
-            
-            const menuToggle = document.getElementById('menu-toggle');
-            const sidebar = document.querySelector('.sidebar');
-            menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-            document.querySelectorAll('#sidebar-menu button').forEach(button => {
-                button.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) sidebar.classList.remove('open');
-                    document.querySelectorAll('#sidebar-menu button').forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                });
-            });
-
-        } catch (e) { document.body.innerHTML = 'Failed to load app configuration.'; }
-    });
-
-    async function handleAuthState(user) {
-        if (user) {
-            const tokenResult = await user.getIdTokenResult();
-            if (tokenResult.claims.admin) {
-                idToken = await user.getIdToken();
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('admin-panel').style.display = 'block';
-                loadDashboard();
-            } else {
-                alert('You are not authorized to access this panel.');
-                auth.signOut();
-            }
-        } else {
-            document.getElementById('login-section').style.display = 'flex';
-            document.getElementById('admin-panel').style.display = 'none';
-        }
-    }
-
-    function handleLogin() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        auth.signInWithEmailAndPassword(email, password).catch(err => {
-            document.getElementById('login-error').innerText = err.message;
-        });
-    }
-
-    function loadContent(title, loaderFunction) {
-        document.getElementById('content-title').innerText = title;
-        loaderFunction();
-    }
-
-    async function fetchData(endpoint) {
-        const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${idToken}` } });
-        if (!res.ok) { const error = await res.json(); throw new Error(error.message); }
-        return res.json();
-    }
-
-    function renderHTML(html) {
-        document.getElementById('admin-content').innerHTML = html;
-    }
-
-    async function loadDashboard() {
-        renderHTML(`<div class="form-card"><h3>Welcome!</h3></div>`);
-    }
-
-    async function loadUsers(searchTerm = '') {
-        renderHTML('<p>Loading users...</p>');
-        try {
-            const users = await fetchData(`/api/admin?type=users&search=${encodeURIComponent(searchTerm)}`);
-            let tableRows = users.map(user => {
-                const isBanned = user.banned === true;
-                return `<tr><td>${user.id}</td><td>${user.name||'N/A'}</td><td>${user.points||0}</td><td>${isBanned ? `<span style="color:red;">Banned</span>` : 'Active'}</td><td><button class="action-btn" onclick="editPoints('${user.id}')">Edit Points</button><button class="action-btn ${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="toggleBan('${user.id}', ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button></td></tr>`;
-            }).join('');
-            renderHTML(`<div class="form-card"><input id="user-search" type="text" placeholder="Search..." onkeyup="searchUsers(event)" value="${searchTerm}"></div><table><thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table>`);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
-    }
-
-    async function loadTasks() {
-        renderHTML('<p>Loading tasks...</p>');
-        try {
-            const tasks = await fetchData('/api/admin?type=tasks');
-            let tableRows = tasks.map(task => `<tr><td>${task.title}</td><td>${task.taskType}</td><td>${task.points}</td><td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td></tr>`).join('');
-            renderHTML(`<div class="form-card"><h3>Create Admin Task</h3><form id="task-form"><input id="task-title" placeholder="Title" required><input id="task-points" type="number" placeholder="Points" required><select id="task-type"><option value="general">General</option><option value="daily">Daily</option></select><input id="task-url" placeholder="URL"><button type="submit">Create</button></form></div><table><thead><tr><th>Title</th><th>Type</th><th>Points</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table>`);
-            document.getElementById('task-form').addEventListener('submit', createTask);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
-    }
+    // ... আপনার JavaScript-এর উপরের অংশ (DOMContentloaded, handleAuthState, handleLogin, etc.) অপরিবর্তিত থাকবে ...
     
-    async function loadPromotions() {
-        renderHTML('<p>Loading promotions...</p>');
-        try {
-            const promotions = await fetchData('/api/admin?type=promotions');
-            let tableRows = promotions.map(promo => `<tr><td>${promo.title||promo.link}</td><td>${promo.type}</td><td>${promo.budget}</td><td>${promo.rewardPerUser}</td><td>${promo.status}</td><td><button class="action-btn ban-btn" onclick="deletePromotion('${promo.id}')">Delete</button></td></tr>`).join('');
-            renderHTML(`<table><thead><tr><th>Title/Link</th><th>Type</th><th>Budget</th><th>Reward</th><th>Status</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table>`);
-        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
-    }
-    
+    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     async function loadSettings() {
         renderHTML('<p>Loading settings...</p>');
         try {
             const settings = await fetchData('/api/admin?type=settings');
-            renderHTML(`<div class="form-card"><h3>Settings</h3><form id="settings-form"><label>Referral Commission (%)</label><input id="setting-ref-commission" type="number" value="${settings.referralCommission}" required><label>Min Reward</label><input id="setting-min-reward" type="number" value="${settings.minReward}" required><label>Max Reward</label><input id="setting-max-reward" type="number" value="${settings.maxReward}" required><button type="submit">Save</button></form></div>`);
+            const promotionSettings = settings.promotionSettings || {};
+            
+            // প্রতিটি ক্যাটাগরির জন্য HTML তৈরি করা হচ্ছে
+            const categories = [
+                { id: 'group', name: 'TG Group Member' },
+                { id: 'channel', name: 'TG Channel Member' },
+                { id: 'tg_views', name: 'Telegram Views' },
+                { id: 'yt_views', name: 'YouTube Views' },
+                { id: 'bot_start', name: 'Bot START' }
+            ];
+
+            let promotionSettingsHTML = categories.map(cat => {
+                const catSettings = promotionSettings[cat.id] || { min: 5, max: 100 };
+                return `
+                    <div class="category-setting-card">
+                        <h4>${cat.name}</h4>
+                        <div class="grid-2">
+                            <div>
+                                <label for="setting-min-${cat.id}">Min Points</label>
+                                <input id="setting-min-${cat.id}" type="number" value="${catSettings.min}" required>
+                            </div>
+                            <div>
+                                <label for="setting-max-${cat.id}">Max Points</label>
+                                <input id="setting-max-${cat.id}" type="number" value="${catSettings.max}" required>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderHTML(`
+                <form id="settings-form">
+                    <div class="form-card">
+                        <h3>General Settings</h3>
+                        <label>Referral Commission (%)</label>
+                        <input id="setting-ref-commission" type="number" value="${settings.referralCommission || 20}" required>
+                    </div>
+                    <div class="form-card">
+                        <h3>Promotion Point Settings</h3>
+                        <p>Set the minimum and maximum points users can offer for each task type.</p>
+                        ${promotionSettingsHTML}
+                    </div>
+                    <div class="form-card">
+                        <button type="submit">Save All Settings</button>
+                    </div>
+                </form>
+            `);
             document.getElementById('settings-form').addEventListener('submit', saveSettings);
         } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
     }
 
-    function searchUsers(event) { if (event.key === 'Enter' || !event.target.value) { loadUsers(event.target.value); } }
-
-    async function updateUser(userId, action, value) {
-        try {
-            const res = await fetch('/api/admin?type=users', {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, action, value })
-            });
-            if (!res.ok) { const result = await res.json(); throw new Error(result.message); }
-            loadUsers(document.getElementById('user-search') ? document.getElementById('user-search').value : ''); 
-        } catch (error) { alert(`Error: ${error.message}`); }
-    }
-
-    function editPoints(userId) {
-        const pointsStr = prompt("Enter points to add (+) or subtract (-).\nFor example: 50 or -50");
-        if (pointsStr === null) return;
-        const points = Number(pointsStr);
-        if (isNaN(points)) { alert("Please enter a valid number."); return; }
-        updateUser(userId, 'update_points', points);
-    }
-
-    function toggleBan(userId, isCurrentlyBanned) {
-        if (confirm(`Are you sure you want to ${isCurrentlyBanned ? 'unban' : 'ban'} this user?`)) {
-            updateUser(userId, 'toggle_ban', null);
-        }
-    }
-
-    async function createTask(e) {
-        e.preventDefault();
-        const task = {
-            title: document.getElementById('task-title').value,
-            points: Number(document.getElementById('task-points').value),
-            taskType: document.getElementById('task-type').value,
-            url: document.getElementById('task-url').value,
-        };
-        try {
-            await fetch('/api/admin?type=tasks', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
-            loadTasks();
-        } catch (e) { alert('Failed to create task.'); }
-    }
-
-    async function deleteTask(taskId) {
-        if (!confirm('Are you sure you want to delete this task?')) return;
-        try {
-            await fetch(`/api/admin?type=tasks&taskId=${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
-            loadTasks();
-        } catch (e) { alert('Failed to delete task.'); }
-    }
-
+    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     async function saveSettings(e) {
         e.preventDefault();
-        const settings = {
-            referralCommission: document.getElementById('setting-ref-commission').value,
-            minReward: document.getElementById('setting-min-reward').value,
-            maxReward: document.getElementById('setting-max-reward').value,
-        };
-        try {
-            await fetch('/api/admin?type=settings', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
-            alert('Settings saved successfully!');
-            loadSettings();
-        } catch (e) { alert('Failed to save settings.'); }
-    }
-
-    async function deletePromotion(promotionId) {
-        if (!confirm('Are you sure you want to delete this promotion?')) return;
-        try {
-            await fetch(`/api/admin?type=promotions&promotionId=${promotionId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
-            loadPromotions();
-        } catch (e) { alert('Failed to delete promotion.'); }
-    }
-</script>
-</body>
-</html>
+        
+        // promotionSettings অবজেক্ট তৈরি করা হচ্ছে
+        const promotionSettings = {
+            group: {
+                min: Number(document.getElementById('setting-min-group').value),
+                max: Number(document.getElementById('setting-max-group').value),
+            },
+            channel: {
+                min: Number(document.getElementById('setting-min-channel').value),
+                max: Number(document.getElementById('
