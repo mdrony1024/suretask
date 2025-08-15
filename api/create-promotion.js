@@ -3,9 +3,7 @@ const admin = require('firebase-admin');
 // Firebase Admin SDK ইনিশিয়ালাইজেশন
 try {
   if (!admin.apps.length) {
-    // FIREBASE_ADMIN_CONFIG ভ্যারিয়েবল থেকে কনফিগারেশন পার্স করা হচ্ছে
     const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CONFIG);
-    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
@@ -25,16 +23,41 @@ module.exports = async (req, res) => {
   try {
     const { userId, title, url, category, quantity, pointsPerTask } = req.body;
 
-    // --- ডেটা ভ্যালিডেশন ---
+    // --- বেসিক ডেটা ভ্যালিডেশন ---
     if (!userId || !title || !url || !category || !quantity || !pointsPerTask) {
       return res.status(400).json({ success: false, message: 'Missing required fields.' });
     }
     if (typeof quantity !== 'number' || quantity < 5) {
         return res.status(400).json({ success: false, message: 'Quantity must be at least 5.' });
     }
-    if (typeof pointsPerTask !== 'number' || pointsPerTask < 5) {
-        return res.status(400).json({ success: false, message: 'Points per task must be at least 5.' });
+    if (typeof pointsPerTask !== 'number') {
+        return res.status(400).json({ success: false, message: 'Points per task must be a number.' });
     }
+
+    // ===== নতুন পরিবর্তন এখানে শুরু হচ্ছে =====
+
+    // ধাপ ১: Firestore থেকে সেটিংস লোড করা হচ্ছে
+    const settingsDoc = await firestore.collection('settings').doc('global').get();
+    if (!settingsDoc.exists || !settingsDoc.data().promotionSettings) {
+        throw new Error('Promotion settings are not configured in the admin panel.');
+    }
+    const promotionSettings = settingsDoc.data().promotionSettings;
+    
+    // ধাপ ২: নির্দিষ্ট ক্যাটাগরির জন্য min/max সীমা বের করা হচ্ছে
+    const categorySettings = promotionSettings[category];
+    if (!categorySettings) {
+        throw new Error(`Settings for category '${category}' not found.`);
+    }
+
+    // ধাপ ৩: ব্যবহারকারীর দেওয়া পয়েন্টের মান যাচাই করা হচ্ছে
+    if (pointsPerTask < categorySettings.min || pointsPerTask > categorySettings.max) {
+      return res.status(400).json({ 
+          success: false, 
+          message: `For this category, points per user must be between ${categorySettings.min} and ${categorySettings.max}.` 
+      });
+    }
+
+    // ===== নতুন পরিবর্তন এখানে শেষ হচ্ছে =====
 
     const totalCost = quantity * pointsPerTask;
     const userRef = firestore.collection('users').doc(String(userId));
