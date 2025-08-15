@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const { Telegraf } = require('telegraf'); // টেলিগ্রাম এপিআই ব্যবহারের জন্য
+const { Telegraf } = require('telegraf');
 
 // Firebase Admin SDK ইনিশিয়ালাইজেশন
 try {
@@ -15,7 +15,7 @@ try {
 
 const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
-const bot = new Telegraf(process.env.TELEGRAM_API_TOKEN); // আপনার বট টোকেন
+const bot = new Telegraf(process.env.TELEGRAM_API_TOKEN);
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -31,8 +31,6 @@ module.exports = async (req, res) => {
     }
     // ... অন্যান্য ভ্যালিডেশন অপরিবর্তিত ...
 
-    // ===== নতুন পরিবর্তন এখানে শুরু হচ্ছে =====
-
     // ধাপ ১: URL থেকে চ্যাট আইডি (@username) বের করা
     let chatId;
     try {
@@ -44,25 +42,35 @@ module.exports = async (req, res) => {
 
     // ধাপ ২: বটটি ওই চ্যাটে অ্যাডমিন কিনা তা যাচাই করা
     try {
-        const botInfo = await bot.telegram.getMe(); // বটের নিজের তথ্য নেওয়া
+        const botInfo = await bot.telegram.getMe();
         const botMember = await bot.telegram.getChatMember(chatId, botInfo.id);
 
         if (!['administrator', 'creator'].includes(botMember.status)) {
-            // যদি বট অ্যাডমিন না হয়
-            return res.status(403).json({ success: false, message: `Our bot (@${botInfo.username}) is not an admin in this channel/group. Please add it as an administrator to create the promotion.` });
+            return res.status(403).json({ success: false, message: `Our bot (@${botInfo.username}) is not an admin. Please add it as an administrator.` });
         }
     } catch (error) {
-        // যদি চ্যাট খুঁজে না পাওয়া যায় বা অন্য কোনো টেলিগ্রাম এপিআই এরর হয়
         if (error.response && error.response.description) {
-             return res.status(400).json({ success: false, message: `Telegram Error: ${error.response.description}. Make sure the URL is correct and public.` });
+             return res.status(400).json({ success: false, message: `Telegram Error: ${error.response.description}.` });
         }
-        throw error; // অন্য কোনো অভ্যন্তরীণ এররের জন্য
+        throw error;
     }
 
+    // ===== নতুন পরিবর্তন এখানে শুরু হচ্ছে =====
+
+    // ধাপ ৩: ডুপ্লিকেট অ্যাক্টিভ প্রমোশন চেক করা
+    const existingPromoQuery = await firestore.collection('promotions')
+        .where('creatorId', '==', String(userId))
+        .where('url', '==', url)
+        .where('status', '==', 'active')
+        .limit(1)
+        .get();
+
+    if (!existingPromoQuery.empty) {
+        return res.status(400).json({ success: false, message: "You already have an active promotion with this URL. Please wait for it to complete or delete it first." });
+    }
+    
     // ===== নতুন পরিবর্তন এখানে শেষ হচ্ছে =====
     
-    // যদি উপরের ধাপগুলো সফল হয়, তাহলেই কেবল প্রমোশন তৈরি হবে
-
     const totalCost = quantity * pointsPerTask;
     const userRef = firestore.collection('users').doc(String(userId));
     
@@ -74,7 +82,6 @@ module.exports = async (req, res) => {
       const currentUserPoints = userDoc.data().points || 0;
       if (currentUserPoints < totalCost) throw new Error("You don't have enough points.");
 
-      // পয়েন্ট কাটা এবং প্রমোশন তৈরি করা
       transaction.update(userRef, { points: currentUserPoints - totalCost });
       const promotionRef = firestore.collection('promotions').doc();
       transaction.set(promotionRef, {
