@@ -6,34 +6,31 @@
     <title>SureTask - Available Tasks</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* ... আপনার CSS কোড অপরিবর্তিত থাকবে ... */
         :root {
-            --light-bg: #f3f4f6; --light-card-bg: #ffffff; --light-text: #111827; --light-secondary-text: #6b7280; --light-border: #e5e7eb;
-            --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; --dark-secondary-text: #9ca3af; --dark-border: #4b5563;
-            --accent-color: #5856d6; --success: #22c55e; --danger: #ef4444;
+            --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; 
+            --secondary-text: #9ca3af; --border-color: #4b5563;
+            --accent-color: #5856d6; --success: #22c55e; --daily-color: #f59e0b;
         }
-        body.light { --bg-color: var(--light-bg); --card-bg-color: var(--light-card-bg); --text-color: var(--light-text); --secondary-text-color: var(--light-secondary-text); --border-color: var(--light-border); }
-        body.dark { --bg-color: var(--dark-bg); --card-bg-color: var(--dark-card-bg); --text-color: var(--dark-text); --secondary-text-color: var(--dark-secondary-text); --border-color: var(--dark-border); }
-        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); }
-        .view { padding: 0 15px; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .page-header { display: flex; align-items: center; padding: 15px; color: var(--text-color); }
-        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); margin-right: 10px; }
-        .page-header .title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .task-card { background-color: var(--card-bg-color); border-radius: 15px; padding: 20px; margin-top: 15px; box-shadow: 0 4px_10px rgba(0,0,0,0.05); }
+        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--dark-bg); color: var(--dark-text); }
+        .view { padding: 0 15px; }
+        .page-header { display: flex; align-items: center; padding: 15px; }
+        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--dark-text); margin-right: 10px; }
+        .page-header .title { font-size: 20px; font-weight: 600; }
+        .section-title { font-size: 18px; font-weight: 600; margin-top: 25px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid var(--accent-color); }
+        .task-card { background-color: var(--dark-card-bg); border-radius: 15px; padding: 20px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        .task-card.daily::before { content: 'DAILY'; position: absolute; top: 10px; right: -25px; background: var(--daily-color); color: white; padding: 4px 30px; font-size: 10px; font-weight: bold; transform: rotate(45deg); }
         .task-info h3 { margin: 0; font-size: 18px; font-weight: 600; }
         .task-info .points { color: var(--success); font-weight: 600; font-size: 16px; margin-top: 5px; }
         .task-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .task-btn { padding: 12px; border-radius: 12px; border: none; font-size: 16px; font-weight: 500; cursor: pointer; transition: background-color 0.3s; }
+        .task-btn { padding: 12px; border-radius: 12px; border: none; font-size: 16px; font-weight: 500; cursor: pointer; }
         .join-btn { background-color: var(--accent-color); color: white; }
-        .verify-btn { background-color: var(--dark-card-bg); color: var(--dark-text); border: 1px solid var(--border-color); }
-        .no-tasks { text-align: center; margin-top: 50px; color: var(--secondary-text-color); }
+        .verify-btn { background-color: #4b5563; color: var(--dark-text); }
+        .verify-btn:disabled { background-color: var(--success); color: white; cursor: not-allowed; }
+        .no-tasks { text-align: center; margin-top: 50px; color: var(--secondary-text); }
     </style>
 </head>
 <body class="dark">
@@ -47,7 +44,7 @@
     
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let tg, firestoreDb;
+    let tg, firestoreDb, userId;
     const categoryNames = {
         group: "TG Group Tasks",
         channel: "TG Channel Tasks",
@@ -68,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tg = window.Telegram.WebApp;
             tg.ready();
             
+            userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                document.getElementById('tasks-container').innerHTML = '<div class="no-tasks"><h3>Could not verify user.</h3></div>';
+                return;
+            }
+            
             const savedTheme = localStorage.getItem('theme') || 'dark';
             document.body.className = savedTheme;
 
@@ -76,87 +79,134 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (category) {
                 document.getElementById('page-title').innerText = categoryNames[category] || "Tasks";
-                loadAllTasks(category); // নতুন ফাংশন কল করা হচ্ছে
+                await loadAllTasks(category);
             } else {
-                document.getElementById('tasks-container').innerHTML = `<div class="no-tasks"><h3>No category selected.</h3><p>Please go back and choose a task type.</p></div>`;
+                document.getElementById('tasks-container').innerHTML = `<div class="no-tasks"><h3>No category selected.</h3></div>`;
             }
-
         } catch (error) {
-            document.getElementById('tasks-container').innerHTML = `<h1 class="no-tasks">Page Failed to Load</h1><p style="text-align:center;">${error.message}</p>`;
+            document.getElementById('tasks-container').innerHTML = `<h1 class="no-tasks">Page Failed to Load: ${error.message}</h1>`;
         }
     }
 
-    // ===== মূল পরিবর্তন এই ফাংশনে করা হয়েছে =====
     async function loadAllTasks(category) {
         const container = document.getElementById('tasks-container');
         container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
 
         try {
-            // Promise.all ব্যবহার করে দুটি কোয়েরি একসাথে চালানো হচ্ছে
+            // ব্যবহারকারীর সম্পন্ন করা টাস্কের তালিকা আনা হচ্ছে
+            const historySnapshot = await firestoreDb.collection('userTaskHistory').where('userId', '==', String(userId)).get();
+            const completedTasks = {};
+            historySnapshot.forEach(doc => {
+                completedTasks[doc.data().taskId] = doc.data().lastCompleted;
+            });
+            
             const [adminTasksSnapshot, promotionTasksSnapshot] = await Promise.all([
                 firestoreDb.collection('tasks').where('category', '==', category).get(),
                 firestoreDb.collection('promotions').where('category', '==', category).where('status', '==', 'active').get()
             ]);
 
-            const allTasks = [];
-
-            // অ্যাডমিনের টাস্কগুলো যোগ করা হচ্ছে
+            let adminTasksHTML = '';
+            let promotionTasksHTML = '';
+            
             adminTasksSnapshot.forEach(doc => {
-                allTasks.push({ id: doc.id, data: doc.data() });
+                adminTasksHTML += createTaskCardHTML(doc.id, doc.data(), false, completedTasks);
             });
-
-            // ব্যবহারকারীদের প্রমোশনগুলো যোগ করা হচ্ছে
+            
             promotionTasksSnapshot.forEach(doc => {
-                const promoData = doc.data();
-                // প্রমোশনের ডেটাকে টাস্কের মতো একই কাঠামোতে আনা হচ্ছে
-                const taskData = {
-                    title: promoData.title,
-                    points: promoData.pointsPerTask,
-                    url: promoData.url
-                };
-                allTasks.push({ id: doc.id, data: taskData, isPromotion: true });
+                const promo = doc.data();
+                const taskData = { title: promo.title, points: promo.pointsPerTask, url: promo.url, taskType: 'promotion' };
+                promotionTasksHTML += createTaskCardHTML(doc.id, taskData, true, completedTasks);
             });
-
-            if (allTasks.length === 0) {
-                container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3><p>Please check back later.</p></div>`;
+            
+            if (!adminTasksHTML && !promotionTasksHTML) {
+                container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3></div>`;
                 return;
             }
             
-            container.innerHTML = '';
-            // সব টাস্ক (অ্যাডমিন + প্রমোশন) দেখানো হচ্ছে
-            allTasks.forEach(task => {
-                renderTaskCard(container, task.data, task.id);
-            });
+            container.innerHTML = `
+                ${adminTasksHTML ? `<h2 class="section-title">Official Tasks</h2>${adminTasksHTML}` : ''}
+                ${promotionTasksHTML ? `<h2 class="section-title">User Promotions</h2>${promotionTasksHTML}` : ''}
+            `;
+            
+            attachEventListeners();
 
         } catch (error) {
             console.error("Error loading tasks:", error);
-            container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3><p>${error.message}</p></div>`;
+            container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3></div>`;
         }
     }
 
-    function renderTaskCard(container, task, taskId) {
-        const card = document.createElement('div');
-        card.className = 'task-card';
-        card.innerHTML = `
-            <div class="task-info">
-                <h3>${task.title || 'Untitled Task'}</h3>
-                <p class="points">+${task.points || 0} Points</p>
-            </div>
-            <div class="task-actions">
-                <button id="join-${taskId}" class="task-btn join-btn">Join</button>
-                <button id="verify-${taskId}" class="task-btn verify-btn">Verify</button>
-            </div>
-        `;
-        container.appendChild(card);
-        const joinBtn = document.getElementById(`join-${taskId}`);
-        joinBtn.addEventListener('click', () => {
-            if (task.url && task.url.trim() !== '') {
-                tg.openLink(task.url);
+    function createTaskCardHTML(taskId, task, isPromotion, completedTasks) {
+        const isDaily = task.taskType === 'daily';
+        const today = new Date().toISOString().slice(0, 10);
+        let isCompleted = false;
+
+        if (completedTasks[taskId]) {
+            if (isDaily) {
+                isCompleted = completedTasks[taskId] === today;
             } else {
-                tg.showAlert('Link for this task is not available.');
+                isCompleted = true;
             }
+        }
+
+        return `
+            <div class="task-card ${isDaily ? 'daily' : ''}">
+                <div class="task-info">
+                    <h3>${task.title || 'Untitled Task'}</h3>
+                    <p class="points">+${task.points || task.pointsPerTask || 0} Points</p>
+                </div>
+                <div class="task-actions">
+                    <button class="task-btn join-btn" data-url="${task.url || ''}">Join</button>
+                    <button class="task-btn verify-btn" data-task-id="${taskId}" data-is-promotion="${isPromotion}" ${isCompleted ? 'disabled' : ''}>
+                        ${isCompleted ? 'Completed' : 'Verify'}
+                    </button>
+                </div>
+            </div>`;
+    }
+    
+    // ===== এই ফাংশনটি সম্পূর্ণ পরিবর্তন করা হয়েছে =====
+    function attachEventListeners() {
+        document.querySelectorAll('.join-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const url = e.target.dataset.url;
+                if (url) tg.openLink(url);
+                else tg.showAlert('Link for this task is not available.');
+            });
         });
-        document.getElementById(`verify-${taskId}`).addEventListener('click', () => tg.showAlert('Verification feature is coming soon!'));
+
+        document.querySelectorAll('.verify-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const buttonEl = e.target;
+                const taskId = buttonEl.dataset.taskId;
+                const isPromotion = buttonEl.dataset.isPromotion === 'true';
+
+                buttonEl.disabled = true;
+                buttonEl.innerText = 'Verifying...';
+
+                try {
+                    const response = await fetch('/api/verify-task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: String(userId), taskId, isPromotion })
+                    });
+                    
+                    const result = await response.json();
+                    tg.showAlert(result.message);
+
+                    if (response.ok && result.success) {
+                        buttonEl.innerText = 'Completed';
+                        // বাটনটি permanently disabled হয়ে থাকবে কারণ এখন Firestore থেকে স্ট্যাটাস চেক করা হবে
+                    } else {
+                        buttonEl.disabled = false;
+                        buttonEl.innerText = 'Verify';
+                    }
+                } catch (error) {
+                    tg.showAlert('An error occurred during verification.');
+                    buttonEl.disabled = false;
+                    buttonEl.innerText = 'Verify';
+                }
+            });
+        });
     }
 
     initializeApp();
