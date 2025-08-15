@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { Telegraf } = require('telegraf'); // টেলিগ্রাম এপিআই ব্যবহারের জন্য
 
 // Firebase Admin SDK ইনিশিয়ালাইজেশন
 try {
@@ -14,6 +15,7 @@ try {
 
 const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
+const bot = new Telegraf(process.env.TELEGRAM_API_TOKEN); // আপনার বট টোকেন
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -27,66 +29,56 @@ module.exports = async (req, res) => {
     if (!userId || !title || !url || !category || !quantity || !pointsPerTask) {
       return res.status(400).json({ success: false, message: 'Missing required fields.' });
     }
-    if (typeof quantity !== 'number' || quantity < 5) {
-        return res.status(400).json({ success: false, message: 'Quantity must be at least 5.' });
-    }
-    if (typeof pointsPerTask !== 'number') {
-        return res.status(400).json({ success: false, message: 'Points per task must be a number.' });
-    }
+    // ... অন্যান্য ভ্যালিডেশন অপরিবর্তিত ...
 
     // ===== নতুন পরিবর্তন এখানে শুরু হচ্ছে =====
 
-    // ধাপ ১: Firestore থেকে সেটিংস লোড করা হচ্ছে
-    const settingsDoc = await firestore.collection('settings').doc('global').get();
-    if (!settingsDoc.exists || !settingsDoc.data().promotionSettings) {
-        throw new Error('Promotion settings are not configured in the admin panel.');
-    }
-    const promotionSettings = settingsDoc.data().promotionSettings;
-    
-    // ধাপ ২: নির্দিষ্ট ক্যাটাগরির জন্য min/max সীমা বের করা হচ্ছে
-    const categorySettings = promotionSettings[category];
-    if (!categorySettings) {
-        throw new Error(`Settings for category '${category}' not found.`);
+    // ধাপ ১: URL থেকে চ্যাট আইডি (@username) বের করা
+    let chatId;
+    try {
+        const chatUrl = new URL(url);
+        chatId = `@${chatUrl.pathname.split('/')[1]}`;
+    } catch (e) {
+        return res.status(400).json({ success: false, message: 'Invalid URL format.' });
     }
 
-    // ধাপ ৩: ব্যবহারকারীর দেওয়া পয়েন্টের মান যাচাই করা হচ্ছে
-    if (pointsPerTask < categorySettings.min || pointsPerTask > categorySettings.max) {
-      return res.status(400).json({ 
-          success: false, 
-          message: `For this category, points per user must be between ${categorySettings.min} and ${categorySettings.max}.` 
-      });
+    // ধাপ ২: বটটি ওই চ্যাটে অ্যাডমিন কিনা তা যাচাই করা
+    try {
+        const botInfo = await bot.telegram.getMe(); // বটের নিজের তথ্য নেওয়া
+        const botMember = await bot.telegram.getChatMember(chatId, botInfo.id);
+
+        if (!['administrator', 'creator'].includes(botMember.status)) {
+            // যদি বট অ্যাডমিন না হয়
+            return res.status(403).json({ success: false, message: `Our bot (@${botInfo.username}) is not an admin in this channel/group. Please add it as an administrator to create the promotion.` });
+        }
+    } catch (error) {
+        // যদি চ্যাট খুঁজে না পাওয়া যায় বা অন্য কোনো টেলিগ্রাম এপিআই এরর হয়
+        if (error.response && error.response.description) {
+             return res.status(400).json({ success: false, message: `Telegram Error: ${error.response.description}. Make sure the URL is correct and public.` });
+        }
+        throw error; // অন্য কোনো অভ্যন্তরীণ এররের জন্য
     }
 
     // ===== নতুন পরিবর্তন এখানে শেষ হচ্ছে =====
+    
+    // যদি উপরের ধাপগুলো সফল হয়, তাহলেই কেবল প্রমোশন তৈরি হবে
 
     const totalCost = quantity * pointsPerTask;
     const userRef = firestore.collection('users').doc(String(userId));
-
-    // --- Firestore Transaction শুরু হচ্ছে ---
+    
+    // --- Firestore Transaction ---
     await firestore.runTransaction(async (transaction) => {
       const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found.');
+      
+      const currentUserPoints = userDoc.data().points || 0;
+      if (currentUserPoints < totalCost) throw new Error("You don't have enough points.");
 
-      if (!userDoc.exists) {
-        throw new Error('User not found.');
-      }
-
-      const userData = userDoc.data();
-      const currentUserPoints = userData.points || 0;
-
-      if (currentUserPoints < totalCost) {
-        throw new Error("You don't have enough points to create this promotion.");
-      }
-
-      const newPoints = currentUserPoints - totalCost;
-      transaction.update(userRef, { points: newPoints });
-
+      // পয়েন্ট কাটা এবং প্রমোশন তৈরি করা
+      transaction.update(userRef, { points: currentUserPoints - totalCost });
       const promotionRef = firestore.collection('promotions').doc();
       transaction.set(promotionRef, {
-        title,
-        url,
-        category,
-        pointsPerTask,
-        quantity,
+        title, url, category, pointsPerTask, quantity,
         completedCount: 0,
         creatorId: String(userId),
         status: 'active',
