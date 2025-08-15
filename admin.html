@@ -1,256 +1,383 @@
-// admin.html-এর ভেতরে এই দুটি ফাংশন আপডেট করুন
-
-async function loadTasks() {
-    renderHTML('<p>Loading tasks...</p>');
-    try {
-        const tasks = await fetchData('/api/admin?type=tasks');
-        let tableRows = tasks.map(task => `<tr><td>${task.title}</td><td>${task.category || 'N/A'}</td><td>${task.taskType || 'general'}</td><td>${task.points}</td><td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td></tr>`).join('');
-        renderHTML(`
-            <div class="form-card">
-                <h3>Create Admin Task</h3>
-                <form id="task-form">
-                    <input id="task-title" placeholder="Title" required>
-                    <input id="task-points" type="number" placeholder="Points" required>
-                    <select id="task-category" required>
-                        <option value="" disabled selected>Select Category</option>
-                        <option value="group">TG Group Member</option>
-                        <option value="channel">TG Channel Member</option>
-                        <option value="tg_views">Telegram Views</option>
-                        <option value="yt_views">YouTube Views</option>
-                        <option value="bot_start">Bot START</option>
-                    </select>
-                    <select id="task-type" required>
-                        <option value="general">General (One time)</option>
-                        <option value="daily">Daily (Once per day)</option>
-                    </select>
-                    <input id="task-url" placeholder="URL" required>
-                    <button type="submit">Create Task</button>
-                </form>
-            </div>
-            <table>
-                <thead><tr><th>Title</th><th>Category</th><th>Type</th><th>Points</th><th>Action</th></tr></thead>
-                <tbody>${tableRows}</tbody>
-            </table>
-        `);
-        document.getElementById('task-form').addEventListener('submit', createTask);
-    } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
-}
-
-async function createTask(e) {
-    e.preventDefault();
-    const task = {
-        title: document.getElementById('task-title').value,
-        points: Number(document.getElementById('task-points').value),
-        category: document.getElementById('task-category').value,
-        taskType: document.getElementById('task-type').value, // taskType যোগ করা হয়েছে
-        url: document.getElementById('task-url').value,
-    };
-    try {
-        await fetch('/api/admin?type=tasks', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
-        loadTasks();
-    } catch (e) { alert('Failed to create task.'); }
-}```
-
-### **ধাপ ২: `tasks.html` ফাইলটি সম্পূর্ণ পরিবর্তন করুন**
-
-এখন, আপনার টাস্ক দেখানোর পেজটিকে সম্পূর্ণ পরিবর্তন করতে হবে। এই নতুন কোডটি অ্যাডমিনের টাস্ক (General এবং Daily) এবং ব্যবহারকারীদের প্রমোশন আলাদাভাবে দেখাবে।
-
-অনুগ্রহ করে আপনার `tasks.html` ফাইলের সম্পূর্ণ কোডটি মুছে ফেলে, তার পরিবর্তে নিচের নতুন কোডটি পেস্ট করুন।
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SureTask - Available Tasks</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>SureTask Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* ... আপনার CSS কোড অপরিবর্তিত থাকবে, শুধু কিছু নতুন ক্লাস যোগ করা হয়েছে ... */
-        :root {
-            --dark-bg: #1f2937; --dark-card-bg: #374151; --dark-text: #f9fafb; 
-            --secondary-text: #9ca3af; --border-color: #4b5563;
-            --accent-color: #5856d6; --success: #22c55e; --daily-color: #f59e0b;
+        :root { 
+            --primary-color: #5856d6; 
+            --light-bg: #f4f7f6; 
+            --card-bg: #ffffff; 
+            --text-color: #333;
+            --sidebar-bg: #374151;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
         }
-        body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--dark-bg); color: var(--dark-text); }
-        .view { padding: 0 15px; }
-        .page-header { display: flex; align-items: center; padding: 15px; }
-        .back-button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--dark-text); margin-right: 10px; }
-        .page-header .title { font-size: 20px; font-weight: 600; }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--light-bg); margin: 0; color: var(--text-color); }
+        #login-section { display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .login-box { background: var(--card-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 360px; }
+        .login-box h2 { margin-top: 0; }
+        .login-box input { display: block; width: 100%; padding: 12px; margin-bottom: 12px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
+        .login-box button { width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; cursor: pointer; border-radius: 6px; font-size: 16px; }
         
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-top: 25px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid var(--accent-color);
-        }
+        #admin-panel { display: none; height: 100vh; }
+        .sidebar { background: var(--sidebar-bg); color: white; padding: 20px; box-sizing: border-box; width: 220px; position: fixed; top: 0; left: 0; height: 100%; z-index: 1001; transform: translateX(0); transition: transform 0.3s ease; }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #4b5563;}
+        .sidebar ul { list-style: none; padding: 0; margin-top: 20px; }
+        .sidebar ul li button { background: none; border: none; color: white; padding: 15px; width: 100%; text-align: left; cursor: pointer; font-size: 16px; border-radius: 6px; }
+        .sidebar ul li button:hover, .sidebar ul li button.active { background: #4b5563; }
+        
+        .content { padding: 20px; margin-left: 220px; transition: margin-left 0.3s ease; box-sizing: border-box; height: 100vh; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        #menu-toggle { font-size: 24px; background: none; border: none; cursor: pointer; color: var(--text-color); display: none; }
+        #logout-btn { background: var(--danger-color); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 500;}
+        
+        table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; word-break: break-all; }
+        .form-card { background: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .form-card input, .form-card select, .form-card button, .form-card label { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif;}
+        .form-card label { border: none; text-align: left; padding: 0; margin-bottom: 5px; font-weight: 500; }
+        .form-card button { background: var(--primary-color); color: white; border: none; font-weight: 500; cursor: pointer; }
+        .action-btn { padding: 6px 10px; margin: 2px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; background: white; }
+        .ban-btn { color: var(--danger-color); border-color: var(--danger-color); }
+        .unban-btn { color: var(--success-color); border-color: var(--success-color); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .category-setting-card { margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+        .category-setting-card h4 { margin-top: 0; margin-bottom: 15px; }
 
-        .task-card { 
-            background-color: var(--dark-card-bg); 
-            border-radius: 15px; 
-            padding: 20px; 
-            margin-top: 15px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .content { margin-left: 0; }
+            #menu-toggle { display: inline-block; }
+            .grid-2 { grid-template-columns: 1fr; }
         }
-        .task-card.daily::before {
-            content: 'DAILY';
-            position: absolute;
-            top: 10px;
-            right: -25px;
-            background: var(--daily-color);
-            color: white;
-            padding: 4px 30px;
-            font-size: 10px;
-            font-weight: bold;
-            transform: rotate(45deg);
-        }
-
-        .task-info h3 { margin: 0; font-size: 18px; font-weight: 600; }
-        .task-info .points { color: var(--success); font-weight: 600; font-size: 16px; margin-top: 5px; }
-        .task-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .task-btn { padding: 12px; border-radius: 12px; border: none; font-size: 16px; font-weight: 500; cursor: pointer; }
-        .join-btn { background-color: var(--accent-color); color: white; }
-        .verify-btn { background-color: #4b5563; color: var(--dark-text); }
-        .verify-btn:disabled { background-color: var(--success); color: white; cursor: not-allowed; }
-        .no-tasks { text-align: center; margin-top: 50px; color: var(--secondary-text); }
     </style>
 </head>
-<body class="dark">
-    
-    <div class="page-header">
-        <button class="back-button" onclick="window.location.href='tasks_home.html'"><i class='bx bx-arrow-back'></i></button>
-        <h1 id="page-title" class="title">Tasks</h1>
-    </div>
+<body>
 
-    <div id="tasks-container" class="view"></div>
-    
+    <section id="login-section">
+        <div class="login-box">
+            <h2>Admin Panel Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn">Login</button>
+            <p id="login-error" style="color:red;"></p>
+        </div>
+    </section>
+
+    <section id="admin-panel">
+        <nav class="sidebar">
+            <h2>SureTask</h2>
+            <ul id="sidebar-menu">
+                <li><button onclick="loadContent('Dashboard', loadDashboard)">Dashboard</button></li>
+                <li><button onclick="loadContent('Users', loadUsers)">Users</button></li>
+                <li><button onclick="loadContent('Admin Tasks', loadTasks)">Admin Tasks</button></li>
+                <li><button onclick="loadContent('User Promotions', loadPromotions)">User Promotions</button></li>
+                <li><button onclick="loadContent('Settings', loadSettings)">Settings</button></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <header>
+                <div>
+                    <button id="menu-toggle"><i class='bx bx-menu'></i></button>
+                    <h1 id="content-title" style="display: inline-block; margin-left: 10px; vertical-align: middle;">Dashboard</h1>
+                </div>
+                <button id="logout-btn">Logout</button>
+            </header>
+            <div id="admin-content"></div>
+        </main>
+    </section>
+
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    let tg, firestoreDb, userId;
-    // ... ক্যাটাগরির নাম ম্যাপ অপরিবর্তিত ...
+    let firebaseApp, auth, firestoreDb, idToken;
 
-    async function initializeApp() {
-        // ... আপনার initializeApp ফাংশন অপরিবর্তিত ...
-    }
-
-    async function loadAllTasks(category) {
-        const container = document.getElementById('tasks-container');
-        container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
-        
+    document.addEventListener('DOMContentLoaded', async () => {
         try {
-            const [adminTasksSnapshot, promotionTasksSnapshot] = await Promise.all([
-                firestoreDb.collection('tasks').where('category', '==', category).get(),
-                firestoreDb.collection('promotions').where('category', '==', category).where('status', '==', 'active').get()
-            ]);
-
-            let adminTasksHTML = '';
-            let promotionTasksHTML = '';
-
-            // অ্যাডমিনের টাস্কগুলো প্রসেস করা হচ্ছে
-            adminTasksSnapshot.forEach(doc => {
-                adminTasksHTML += createTaskCardHTML(doc.id, doc.data());
+            const response = await fetch('/api/config');
+            const firebaseConfig = await response.json();
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            firestoreDb = firebase.firestore();
+            
+            auth.onAuthStateChanged(handleAuthState);
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+            
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+            document.querySelectorAll('#sidebar-menu button').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) sidebar.classList.remove('open');
+                    document.querySelectorAll('#sidebar-menu button').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                });
             });
+        } catch (e) { document.body.innerHTML = 'Failed to load app configuration.'; }
+    });
 
-            // প্রমোশনগুলো প্রসেস করা হচ্ছে
-            promotionTasksSnapshot.forEach(doc => {
-                const promoData = doc.data();
-                const taskData = {
-                    title: promoData.title,
-                    points: promoData.pointsPerTask,
-                    url: promoData.url,
-                    taskType: 'promotion' // প্রমোশনকে আলাদাভাবে চেনার জন্য
-                };
-                promotionTasksHTML += createTaskCardHTML(doc.id, taskData);
-            });
-
-            if (!adminTasksHTML && !promotionTasksHTML) {
-                container.innerHTML = `<div class="no-tasks"><h3>No tasks available.</h3></div>`;
-                return;
+    async function handleAuthState(user) {
+        if (user) {
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.admin) {
+                idToken = await user.getIdToken();
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                document.querySelector('#sidebar-menu button').click();
+            } else {
+                alert('You are not authorized to access this panel.');
+                auth.signOut();
             }
-            
-            // চূড়ান্ত HTML তৈরি করা হচ্ছে
-            container.innerHTML = `
-                ${adminTasksHTML ? `<h2 class="section-title">Official Tasks</h2>${adminTasksHTML}` : ''}
-                ${promotionTasksHTML ? `<h2 class="section-title">User Promotions</h2>${promotionTasksHTML}` : ''}
-            `;
-            
-            // ইভেন্ট লিসেনারগুলো যোগ করা হচ্ছে
-            attachEventListeners();
-
-        } catch (error) {
-            console.error("Error loading tasks:", error);
-            container.innerHTML = `<div class="no-tasks"><h3>Could not load tasks.</h3></div>`;
+        } else {
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('admin-panel').style.display = 'none';
         }
     }
 
-    function createTaskCardHTML(taskId, task) {
-        const isDaily = task.taskType === 'daily';
-        const today = new Date().toISOString().slice(0, 10); // আজকের তারিখ YYYY-MM-DD ফরম্যাটে
-        const isCompletedToday = localStorage.getItem(`task_${taskId}`) === today;
-
-        return `
-            <div class="task-card ${isDaily ? 'daily' : ''}">
-                <div class="task-info">
-                    <h3>${task.title || 'Untitled Task'}</h3>
-                    <p class="points">+${task.points || 0} Points</p>
-                </div>
-                <div class="task-actions">
-                    <button class="task-btn join-btn" data-url="${task.url || ''}">Join</button>
-                    <button class="task-btn verify-btn" data-task-id="${taskId}" data-task-type="${task.taskType}" ${isCompletedToday ? 'disabled' : ''}>
-                        ${isCompletedToday ? 'Completed' : 'Verify'}
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    function attachEventListeners() {
-        document.querySelectorAll('.join-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const url = e.target.dataset.url;
-                if (url) {
-                    tg.openLink(url);
-                } else {
-                    tg.showAlert('Link for this task is not available.');
-                }
-            });
-        });
-
-        document.querySelectorAll('.verify-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const taskId = e.target.dataset.taskId;
-                const taskType = e.target.dataset.taskType;
-                
-                // এখানে verify করার জন্য আপনার ব্যাকএন্ড API-কে কল করতে হবে
-                // সফল হলে নিচের কাজগুলো করতে হবে:
-                
-                tg.showAlert(`Verification for task ${taskId} is in progress...`);
-                
-                if (taskType === 'daily') {
-                    const today = new Date().toISOString().slice(0, 10);
-                    localStorage.setItem(`task_${taskId}`, today);
-                    e.target.disabled = true;
-                    e.target.innerText = 'Completed';
-                } else if (taskType !== 'promotion') { // General admin task
-                    // এটি একবারই করা যাবে
-                    e.target.disabled = true;
-                    e.target.innerText = 'Completed';
-                }
-            });
+    function handleLogin() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, password).catch(err => {
+            document.getElementById('login-error').innerText = err.message;
         });
     }
 
-    initializeApp();
-});
+    function loadContent(title, loaderFunction) {
+        document.getElementById('content-title').innerText = title;
+        loaderFunction();
+    }
+
+    async function fetchData(endpoint) {
+        const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${idToken}` } });
+        if (!res.ok) { const error = await res.json(); throw new Error(error.message); }
+        return res.json();
+    }
+
+    function renderHTML(html) {
+        document.getElementById('admin-content').innerHTML = html;
+    }
+
+    async function loadDashboard() {
+        renderHTML(`<div class="form-card"><h3>Welcome to the SureTask Admin Panel!</h3><p>Select an option from the sidebar to get started.</p></div>`);
+    }
+
+    async function loadUsers(searchTerm = '') {
+        renderHTML('<p>Loading users...</p>');
+        try {
+            const users = await fetchData(`/api/admin?type=users&search=${encodeURIComponent(searchTerm)}`);
+            let tableRows = users.map(user => {
+                const isBanned = user.banned === true;
+                return `<tr><td>${user.id}</td><td>${user.name||'N/A'}</td><td>${user.points||0}</td><td>${isBanned ? `<span style="color:red;">Banned</span>` : 'Active'}</td><td><button class="action-btn" onclick="editPoints('${user.id}')">Edit Points</button><button class="action-btn ${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="toggleBan('${user.id}', ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button></td></tr>`;
+            }).join('');
+            renderHTML(`<div class="form-card"><input id="user-search" type="text" placeholder="Search by User ID or Name..." onkeyup="searchUsers(event)" value="${searchTerm}"></div><table><thead><tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table>`);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+    
+    // ===== এই ফাংশনটি সম্পূর্ণ ঠিক করা হয়েছে =====
+    async function loadTasks() {
+        renderHTML('<p>Loading tasks...</p>');
+        try {
+            const tasks = await fetchData('/api/admin?type=tasks');
+            let tableRows = tasks.map(task => 
+                `<tr>
+                    <td>${task.title}</td>
+                    <td>${task.category || 'N/A'}</td>
+                    <td>${task.taskType || 'general'}</td>
+                    <td>${task.points}</td>
+                    <td><button class="action-btn ban-btn" onclick="deleteTask('${task.id}')">Delete</button></td>
+                </tr>`
+            ).join('');
+            
+            renderHTML(`
+                <div class="form-card">
+                    <h3>Create Admin Task</h3>
+                    <form id="task-form">
+                        <input id="task-title" placeholder="Title" required>
+                        <input id="task-points" type="number" placeholder="Points" required>
+                        <select id="task-category" required>
+                            <option value="" disabled selected>Select Category</option>
+                            <option value="group">TG Group Member</option>
+                            <option value="channel">TG Channel Member</option>
+                            <option value="tg_views">Telegram Views</option>
+                            <option value="yt_views">YouTube Views</option>
+                            <option value="bot_start">Bot START</option>
+                        </select>
+                        <select id="task-type" required>
+                            <option value="general">General (One time)</option>
+                            <option value="daily">Daily (Once per day)</option>
+                        </select>
+                        <input id="task-url" placeholder="URL" required>
+                        <button type="submit">Create Task</button>
+                    </form>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Title</th><th>Category</th><th>Type</th><th>Points</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            `);
+            document.getElementById('task-form').addEventListener('submit', createTask);
+        } catch (e) { 
+            renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); 
+        }
+    }
+    
+    async function loadPromotions() {
+        renderHTML('<p>Loading promotions...</p>');
+        try {
+            const promotions = await fetchData('/api/admin?type=promotions');
+            let tableRows = promotions.map(promo => `<tr><td>${promo.title}</td><td>${promo.category}</td><td>${promo.quantity}</td><td>${promo.pointsPerTask}</td><td>${promo.status}</td><td><button class="action-btn ban-btn" onclick="deletePromotion('${promo.id}')">Delete</button></td></tr>`).join('');
+            renderHTML(`<table><thead><tr><th>Title</th><th>Category</th><th>Quantity</th><th>Reward</th><th>Status</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table>`);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+    
+    // ===== এই ফাংশনটি সম্পূর্ণ ঠিক করা হয়েছে =====
+    async function loadSettings() {
+        renderHTML('<p>Loading settings...</p>');
+        try {
+            const settings = await fetchData('/api/admin?type=settings');
+            const promotionSettings = settings.promotionSettings || {};
+            
+            const categories = [
+                { id: 'group', name: 'TG Group Member' },
+                { id: 'channel', name: 'TG Channel Member' },
+                { id: 'tg_views', name: 'Telegram Views' },
+                { id: 'yt_views', name: 'YouTube Views' },
+                { id: 'bot_start', name: 'Bot START' }
+            ];
+
+            let promotionSettingsHTML = categories.map(cat => {
+                const catSettings = promotionSettings[cat.id] || { min: 5, max: 100 };
+                return `
+                    <div class="category-setting-card">
+                        <h4>${cat.name}</h4>
+                        <div class="grid-2">
+                            <div>
+                                <label for="setting-min-${cat.id}">Min Points</label>
+                                <input id="setting-min-${cat.id}" type="number" value="${catSettings.min}" required>
+                            </div>
+                            <div>
+                                <label for="setting-max-${cat.id}">Max Points</label>
+                                <input id="setting-max-${cat.id}" type="number" value="${catSettings.max}" required>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            renderHTML(`
+                <form id="settings-form">
+                    <div class="form-card">
+                        <h3>General Settings</h3>
+                        <label for="setting-ref-commission">Referral Commission (%)</label>
+                        <input id="setting-ref-commission" type="number" value="${settings.referralCommission || 20}" required>
+                    </div>
+                    <div class="form-card">
+                        <h3>Promotion Point Settings</h3>
+                        <p>Set the minimum and maximum points users can offer for each task type.</p>
+                        ${promotionSettingsHTML}
+                    </div>
+                    <div class="form-card">
+                        <button type="submit">Save All Settings</button>
+                    </div>
+                </form>
+            `);
+            document.getElementById('settings-form').addEventListener('submit', saveSettings);
+        } catch (e) { renderHTML(`<p style="color:red;">Error: ${e.message}</p>`); }
+    }
+
+    function searchUsers(event) { if (event.key === 'Enter' || !event.target.value) { loadUsers(event.target.value); } }
+
+    async function updateUser(userId, action, value) {
+        try {
+            const res = await fetch('/api/admin?type=users', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, action, value })
+            });
+            if (!res.ok) { const result = await res.json(); throw new Error(result.message); }
+            loadUsers(document.getElementById('user-search') ? document.getElementById('user-search').value : ''); 
+        } catch (error) { alert(`Error: ${error.message}`); }
+    }
+
+    function editPoints(userId) {
+        const pointsStr = prompt("Enter points to add (+) or subtract (-).\nFor example: 50 or -50");
+        if (pointsStr === null) return;
+        const points = Number(pointsStr);
+        if (isNaN(points)) { alert("Please enter a valid number."); return; }
+        updateUser(userId, 'update_points', points);
+    }
+
+    function toggleBan(userId, isCurrentlyBanned) {
+        if (confirm(`Are you sure you want to ${isCurrentlyBanned ? 'unban' : 'ban'} this user?`)) {
+            updateUser(userId, 'toggle_ban', null);
+        }
+    }
+
+    // ===== এই ফাংশনটি সম্পূর্ণ ঠিক করা হয়েছে =====
+    async function createTask(e) {
+        e.preventDefault();
+        const task = {
+            title: document.getElementById('task-title').value,
+            points: Number(document.getElementById('task-points').value),
+            category: document.getElementById('task-category').value,
+            taskType: document.getElementById('task-type').value,
+            url: document.getElementById('task-url').value,
+        };
+        try {
+            await fetch('/api/admin?type=tasks', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
+            loadTasks();
+        } catch (e) { alert('Failed to create task.'); }
+    }
+
+    async function deleteTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        try {
+            await fetch(`/api/admin?type=tasks&taskId=${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
+            loadTasks();
+        } catch (e) { alert('Failed to delete task.'); }
+    }
+
+    // ===== এই ফাংশনটি সম্পূর্ণ ঠিক করা হয়েছে =====
+    async function saveSettings(e) {
+        e.preventDefault();
+        
+        const promotionSettings = {
+            group: { min: Number(document.getElementById('setting-min-group').value), max: Number(document.getElementById('setting-max-group').value) },
+            channel: { min: Number(document.getElementById('setting-min-channel').value), max: Number(document.getElementById('setting-max-channel').value) },
+            tg_views: { min: Number(document.getElementById('setting-min-tg_views').value), max: Number(document.getElementById('setting-max-tg_views').value) },
+            yt_views: { min: Number(document.getElementById('setting-min-yt_views').value), max: Number(document.getElementById('setting-max-yt_views').value) },
+            bot_start: { min: Number(document.getElementById('setting-min-bot_start').value), max: Number(document.getElementById('setting-max-bot_start').value) },
+        };
+
+        const settings = {
+            referralCommission: Number(document.getElementById('setting-ref-commission').value),
+            promotionSettings: promotionSettings
+        };
+
+        try {
+            await fetch('/api/admin?type=settings', { method: 'POST', headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+            alert('Settings saved successfully!');
+            loadSettings();
+        } catch (e) { alert('Failed to save settings.'); }
+    }
+
+    async function deletePromotion(promotionId) {
+        if (!confirm('Are you sure you want to delete this promotion?')) return;
+        try {
+            await fetch(`/api/admin?type=promotions&promotionId=${promotionId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${idToken}` } });
+            loadPromotions();
+        } catch (e) { alert('Failed to delete promotion.'); }
+    }
 </script>
-
 </body>
 </html>
