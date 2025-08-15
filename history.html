@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- history.html এর হেড এবং স্টাইল -->
+</html>
+<body>
+    <div class="page-header">
+        <button class="back-button" onclick="window.location.href='index.html'"><i class='bx bx-arrow-back'></i></button>
+        <h1 class="title">My Promotions History</h1>
+    </div>
+    <div id="promotions-container" class="view"></div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // ... Firebase এবং Telegram Web App ইনিশিয়ালাইজ করার কোড ...
+    
+    async function loadUserPromotions() {
+        const container = document.getElementById('promotions-container');
+        container.innerHTML = '<p>Loading your promotions...</p>';
+        
+        // Firestore থেকে এই ব্যবহারকারীর তৈরি করা প্রমোশনগুলো আনা হচ্ছে
+        const snapshot = await firestoreDb.collection('promotions')
+            .where('creatorId', '==', String(userId))
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p>You have not created any promotions yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        snapshot.forEach(doc => {
+            container.innerHTML += createPromotionCardHTML(doc.id, doc.data());
+        });
+        
+        attachEventListeners();
+    }
+
+    function createPromotionCardHTML(id, promo) {
+        const isCompleted = promo.completedCount >= promo.quantity;
+        const statusClass = promo.status === 'active' ? 'active' : (isCompleted ? 'completed' : 'paused');
+        
+        return `
+            <div class="promo-card">
+                <h3>${promo.title}</h3>
+                <p>Status: <span class="status ${statusClass}">${isCompleted ? 'Completed' : promo.status}</span></p>
+                <p>Progress: ${promo.completedCount} / ${promo.quantity}</p>
+                <div class="promo-actions">
+                    <button data-id="${id}" data-action="toggle" ${isCompleted ? 'disabled' : ''}>
+                        ${promo.status === 'active' ? 'Pause' : 'Resume'}
+                    </button>
+                    <button data-id="${id}" data-action="delete">Delete</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function attachEventListeners() {
+        document.querySelectorAll('.promo-actions button').forEach(button => {
+            button.addEventListener('click', async e => {
+                const id = e.target.dataset.id;
+                const action = e.target.dataset.action;
+                
+                // এখানে /api/manage-promotion নামে একটি নতুন API-কে কল করতে হবে
+                // যা প্রমোশন পজ/রিজিউম/ডিলিট করবে।
+                
+                alert(`Action: ${action} on promotion ${id}`);
+                // সফল হলে পেজটি রিলোড করতে হবে:
+                // loadUserPromotions();
+            });
+        });
+    }
+
+    initializeApp();
+});
+</script>
+</body>
