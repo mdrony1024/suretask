@@ -29,10 +29,10 @@ module.exports = async (req, res) => {
 
         const taskCollectionName = isPromotion ? 'promotions' : 'tasks';
         const taskRef = firestore.collection(taskCollectionName).doc(taskId);
-        const userRef = fire.collection('users').doc(String(userId));
         
-        // ===== নতুন পরিবর্তন এখানে =====
-        // এখন আমরা একটি কোয়েরি ব্যবহার করে হিস্টোরি খুঁজব, ডকুমেন্টের আইডি দিয়ে নয়
+        // ===== ভুলটি এখানে সংশোধন করা হয়েছে =====
+        const userRef = firestore.collection('users').doc(String(userId)); 
+        
         const historyQuery = firestore.collection('userTaskHistory')
             .where('userId', '==', String(userId))
             .where('taskId', '==', taskId)
@@ -42,16 +42,15 @@ module.exports = async (req, res) => {
             const [taskDoc, userDoc, historySnapshot] = await Promise.all([
                 transaction.get(taskRef),
                 transaction.get(userRef),
-                transaction.get(historyQuery) // ট্রানজেকশনের ভেতরে কোয়েরি চালানো হচ্ছে
+                transaction.get(historyQuery)
             ]);
 
             if (!taskDoc.exists) throw new Error('Task not found.');
             if (!userDoc.exists) throw new Error('User not found.');
             
             const taskData = taskDoc.data();
-            const userTaskHistoryDoc = historySnapshot.docs[0]; // কোয়েরির ফলাফল
+            const userTaskHistoryDoc = historySnapshot.docs[0];
 
-            // টাস্ক সম্পন্ন করা হয়েছে কিনা তা চেক করা হচ্ছে
             if (userTaskHistoryDoc && userTaskHistoryDoc.exists) {
                 if (taskData.taskType === 'daily' && userTaskHistoryDoc.data().lastCompleted === getTodayDate()) {
                     throw new Error('You have already completed this daily task today.');
@@ -60,8 +59,7 @@ module.exports = async (req, res) => {
                     throw new Error('You have already completed this task.');
                 }
             }
-
-            // টেলিগ্রাম ভেরিফিকেশন...
+            
             if (taskData.category === 'channel' || taskData.category === 'group') {
                 const chatUrl = new URL(taskData.url);
                 const chatId = `@${chatUrl.pathname.split('/')[1]}`;
@@ -74,7 +72,6 @@ module.exports = async (req, res) => {
             const pointsToAdd = taskData.points || taskData.pointsPerTask;
             transaction.update(userRef, { points: admin.firestore.FieldValue.increment(pointsToAdd) });
             
-            // হিস্টোরি ডকুমেন্ট আপডেট বা তৈরি করা হচ্ছে
             if (userTaskHistoryDoc && userTaskHistoryDoc.exists) {
                  transaction.update(userTaskHistoryDoc.ref, { lastCompleted: getTodayDate() });
             } else {
@@ -96,7 +93,8 @@ module.exports = async (req, res) => {
     } catch (error) {
         console.error('Verification Error:', error);
         if (error.response && error.response.description) {
-            // ... টেলিগ্রাম এরর হ্যান্ডলিং ...
+            if (error.response.description.includes('user not found')) return res.status(400).json({ success: false, message: "Please ensure you have started our bot." });
+            if (error.response.description.includes('chat not found')) return res.status(400).json({ success: false, message: "Verification failed. Our bot may not be in the channel/group." });
         }
         return res.status(500).json({ success: false, message: error.message || 'An internal error occurred.' });
     }
