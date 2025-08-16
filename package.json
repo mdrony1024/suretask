@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Hybrid Database Telegram mini app",
   "dependencies": {
-    "firebase-admin": "^11.11.1"
+    "firebase-admin": "^11.11.1",
+    "telegraf": "^4.16.3"
   }
 }
