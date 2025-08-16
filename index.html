@@ -64,8 +64,6 @@
         .nav-item .icon { font-size: 22px; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; transition: all 0.3s; }
         .nav-item.active { color: var(--accent-color); }
         .nav-item.active .icon { background-color: var(--accent-color); color: white; }
-        
-        /* ===== নতুন প্রোফাইল পেজের জন্য CSS ===== */
         .profile-view { padding: 20px; }
         .profile-header { text-align: center; margin-bottom: 30px; }
         .profile-header .pic { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 15px; border: 4px solid var(--accent-color); display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -124,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function runUserLogic() {
         const rtdbUserRef = db.ref(`users/${userId}`);
+
         rtdbUserRef.on('value', (rtdbSnapshot) => {
             const freshName = tg.initDataUnsafe?.user?.first_name || 'User';
             const freshUsername = tg.initDataUnsafe?.user?.username || null;
@@ -136,14 +135,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 rtdbUserRef.set(currentUser);
             }
             
-            loadAdditionalData().then(() => {
-                const requestedView = localStorage.getItem('view') || (document.querySelector('.nav-item.active') ? document.querySelector('.nav-item.active').id.split('-')[1] : 'home');
-                renderView(requestedView);
-                localStorage.removeItem('view');
-            }).catch(error => {
-                console.error("Failed to load additional data:", error);
-                document.getElementById('app-container').innerHTML = `<h1>Error</h1><p>Could not load user data.</p>`;
-            });
+            loadAdditionalData()
+                .then(() => {
+                    const requestedView = localStorage.getItem('view') || (document.querySelector('.nav-item.active') ? document.querySelector('.nav-item.active').id.split('-')[1] : 'home');
+                    renderView(requestedView);
+                    localStorage.removeItem('view');
+                })
+                .catch(error => {
+                    console.error("Failed to load additional data:", error);
+                    document.getElementById('app-container').innerHTML = `<h1>Error</h1><p>Could not load user data.</p>`;
+                });
         });
     }
 
@@ -168,10 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentUser.promotionsCount = promotionsSnapshot.size;
         
-        const updates = { points: currentUser.points, referrals: currentUser.referrals };
-        if (currentUser.points !== rtdbSnapshot.val()?.points || currentUser.referrals !== rtdbSnapshot.val()?.referrals) {
-            await db.ref(`users/${userId}`).update(updates);
-        }
+        await db.ref(`users/${userId}`).update({
+            points: currentUser.points,
+            referrals: currentUser.referrals
+        });
     }
 
     function setupTheme() {
@@ -286,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // ===== এই ফাংশনটি নতুন ডিজাইন অনুযায়ী আপডেট করা হয়েছে =====
     function renderProfilePage(container) {
         const totalMyTask = currentUser.promotionsCount || 0; 
         const totalRefer = currentUser.referrals || 0;
@@ -322,7 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProfilePic(document.getElementById('profile-page-pic'), currentUser.customName || currentUser.name, currentUser.profilePhotoUrl || currentUser.initialPhotoUrl);
     }
     
-    // ===== এই ফাংশনটি পুরোনো প্রোফাইল এডিট পেজ দেখানোর জন্য =====
     function showOldEditProfile() {
         const container = document.getElementById('app-container');
         container.innerHTML = `
@@ -346,12 +345,61 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('photo-upload-input').addEventListener('change', handlePhotoUpload);
         document.getElementById('save-profile-btn').addEventListener('click', saveProfileChanges);
     }
+
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const statusEl = document.getElementById('profile-status');
+        statusEl.textContent = 'Uploading...'; statusEl.className = 'status-message';
+        const storageRef = storage.ref(`profile_pictures/${userId}`);
+        storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(downloadURL => {
+            db.ref(`users/${userId}/profilePhotoUrl`).set(downloadURL);
+            statusEl.textContent = 'Photo updated!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Upload failed.'; statusEl.className = 'status-message status-error';
+        });
+    }
     
-    // বাকি ফাংশনগুলো অপরিবর্তিত
-    function handlePhotoUpload(event) { /* ... */ }
-    function saveProfileChanges() { /* ... */ }
-    function renderProfilePic(container, name, photoUrl) { /* ... */ }
-    function generateColor(str) { /* ... */ }
+    function saveProfileChanges() {
+        const newName = document.getElementById('username-input').value.trim();
+        const statusEl = document.getElementById('profile-status');
+        if (!newName) { statusEl.textContent = 'Name cannot be empty.'; statusEl.className = 'status-message status-error'; return; }
+        statusEl.textContent = 'Saving...';
+        db.ref(`users/${userId}/customName`).set(newName).then(() => {
+            statusEl.textContent = 'Profile saved!'; statusEl.className = 'status-message status-success';
+        }).catch(error => {
+            statusEl.textContent = 'Failed to save.'; statusEl.className = 'status-message status-error';
+        });
+    }
+
+    function renderProfilePic(container, name, photoUrl) {
+        container.innerHTML = '';
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.onerror = () => {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                container.style.backgroundColor = generateColor(name);
+                container.innerHTML = `<span style="color:white; font-size:40px;">${initial}</span>`;
+            };
+            container.appendChild(img);
+        } else {
+            const initial = (name || '?').charAt(0).toUpperCase();
+            container.style.backgroundColor = generateColor(name);
+            container.innerHTML = `<span style="color:white; font-size:40px;">${initial}</span>`;
+        }
+    }
+
+    function generateColor(str) {
+        let hash = 0;
+        for (let i = 0; i < (str || '').length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
+    }
 
     initializeApp();
 });
