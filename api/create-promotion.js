@@ -30,50 +30,63 @@ module.exports = async (req, res) => {
     let chatId;
     try {
         const chatUrl = new URL(url);
-        // t.me/username or t.me/c/12345/ or t.me/joinchat/xyz
-        const pathParts = chatUrl.pathname.split('/').filter(p => p);
-        if (pathParts.length > 0) {
-            chatId = `@${pathParts[0]}`; // পাবলিক 채널/গ্রুপের জন্য
-        } else {
-             throw new Error('Invalid URL format.');
-        }
+        const username = chatUrl.pathname.split('/')[1];
+        if (!username) throw new Error();
+        chatId = `@${username}`;
     } catch (e) {
-        return res.status(400).json({ success: false, message: 'Invalid URL format. Please provide a valid public channel/group link.' });
+        return res.status(400).json({ success: false, message: 'Invalid URL format.' });
     }
 
-    // ===== নতুন পরিবর্তন এখানে শুরু হচ্ছে =====
+    // ===== টেলিগ্রাম ভেরিফিকেশন সেকশনটি সরল করা হয়েছে =====
     try {
         const botInfo = await bot.telegram.getMe();
-        const chat = await bot.telegram.getChat(chatId); // চ্যাটের তথ্য আনা হচ্ছে
-        const botMember = await bot.telegram.getChatMember(chat.id, botInfo.id);
+        // সরাসরি chatId (@username) ব্যবহার করে getChatMember কল করা হচ্ছে
+        const botMember = await bot.telegram.getChatMember(chatId, botInfo.id);
 
-        let hasPermission = false;
-        
-        // বটটি অ্যাডমিন বা ক্রিয়েটর কিনা তা চেক করা হচ্ছে
-        if (['administrator', 'creator'].includes(botMember.status)) {
-            hasPermission = true;
-        }
-
-        if (!hasPermission) {
-            return res.status(403).json({ 
-                success: false, 
-                message: `Our bot (@${botInfo.username}) must be an administrator in the target channel/group.` 
-            });
+        if (!['administrator', 'creator'].includes(botMember.status)) {
+            return res.status(403).json({ success: false, message: `Our bot (@${botInfo.username}) must be an administrator.` });
         }
     } catch (error) {
         console.error("Telegram API check failed:", error.message);
         if (error.response && error.response.description) {
-            // "member list is inaccessible" এররটিকে একটি ব্যবহারকারী-বান্ধব বার্তায় পরিণত করা হচ্ছে
-            if (error.response.description.includes('member list is inaccessible')) {
-                return res.status(400).json({ success: false, message: `Could not verify membership. Please ensure your channel/group is public and our bot is an admin.` });
-            }
-             return res.status(400).json({ success: false, message: `Telegram Error: ${error.response.description}.` });
+            return res.status(400).json({ success: false, message: `Telegram Error: ${error.response.description}.` });
         }
-        return res.status(500).json({ success: false, message: "Could not connect to Telegram. Please try again."});
+        return res.status(500).json({ success: false, message: "Could not connect to Telegram."});
     }
-    // ===== নতুন পরিবর্তন এখানে শেষ হচ্ছে =====
     
     // ... আপনার বাকি কোড (ডুপ্লিকেট চেক, ট্রানজেকশন, ইত্যাদি) অপরিবর্তিত থাকবে ...
+    const existingPromoQuery = await firestore.collection('promotions')
+        .where('creatorId', '==', String(userId))
+        .where('url', '==', url)
+        .where('status', '==', 'active')
+        .limit(1).get();
+
+    if (!existingPromoQuery.empty) {
+        return res.status(400).json({ success: false, message: "You already have an active promotion with this URL." });
+    }
+    
+    const totalCost = quantity * pointsPerTask;
+    const userRef = firestore.collection('users').doc(String(userId));
+    
+    await firestore.runTransaction(async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found.');
+      
+      const currentUserPoints = userDoc.data().points || 0;
+      if (currentUserPoints < totalCost) throw new Error("You don't have enough points.");
+
+      transaction.update(userRef, { points: currentUserPoints - totalCost });
+      const promotionRef = firestore.collection('promotions').doc();
+      transaction.set(promotionRef, {
+        title, url, category, pointsPerTask, quantity,
+        completedCount: 0,
+        creatorId: String(userId),
+        status: 'active',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+    
+    return res.status(200).json({ success: true, message: 'Promotion created successfully!' });
     
   } catch (error) {
     console.error('Error creating promotion:', error);
