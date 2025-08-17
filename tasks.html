@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = `<p style="text-align:center;">Loading tasks...</p>`;
 
         try {
-            // ব্যবহারকারীর সম্পন্ন করা টাস্কের তালিকা আনা হচ্ছে
             const historySnapshot = await firestoreDb.collection('userTaskHistory').where('userId', '==', String(userId)).get();
             const completedTasks = {};
             historySnapshot.forEach(doc => {
@@ -107,19 +106,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let adminTasksHTML = '';
             let promotionTasksHTML = '';
+            const today = new Date().toISOString().slice(0, 10);
             
             adminTasksSnapshot.forEach(doc => {
-                adminTasksHTML += createTaskCardHTML(doc.id, doc.data(), false, completedTasks);
+                const taskId = doc.id;
+                const task = doc.data();
+                let shouldShow = true;
+
+                if (completedTasks[taskId]) {
+                    if (task.taskType === 'daily') {
+                        if (completedTasks[taskId] === today) shouldShow = false;
+                    } else {
+                        shouldShow = false;
+                    }
+                }
+                if (shouldShow) {
+                    adminTasksHTML += createTaskCardHTML(taskId, task, false);
+                }
             });
             
             promotionTasksSnapshot.forEach(doc => {
-                const promo = doc.data();
-                const taskData = { title: promo.title, points: promo.pointsPerTask, url: promo.url, taskType: 'promotion' };
-                promotionTasksHTML += createTaskCardHTML(doc.id, taskData, true, completedTasks);
+                const taskId = doc.id;
+                if (!completedTasks[taskId]) {
+                    const promo = doc.data();
+                    const taskData = { title: promo.title, points: promo.pointsPerTask, url: promo.url, taskType: 'promotion' };
+                    promotionTasksHTML += createTaskCardHTML(taskId, taskData, true);
+                }
             });
-            
+
             if (!adminTasksHTML && !promotionTasksHTML) {
-                container.innerHTML = `<div class="no-tasks"><h3>No tasks available in this category.</h3></div>`;
+                container.innerHTML = `<div class="no-tasks"><h3>No new tasks available in this category.</h3><p>Please check back later.</p></div>`;
                 return;
             }
             
@@ -136,19 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createTaskCardHTML(taskId, task, isPromotion, completedTasks) {
+    function createTaskCardHTML(taskId, task, isPromotion) {
         const isDaily = task.taskType === 'daily';
-        const today = new Date().toISOString().slice(0, 10);
-        let isCompleted = false;
-
-        if (completedTasks[taskId]) {
-            if (isDaily) {
-                isCompleted = completedTasks[taskId] === today;
-            } else {
-                isCompleted = true;
-            }
-        }
-
+        
+        // যেহেতু সম্পন্ন করা টাস্কগুলো দেখানোই হচ্ছে না, তাই isCompleted চেক করার আর প্রয়োজন নেই
         return `
             <div class="task-card ${isDaily ? 'daily' : ''}">
                 <div class="task-info">
@@ -157,14 +164,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="task-actions">
                     <button class="task-btn join-btn" data-url="${task.url || ''}">Join</button>
-                    <button class="task-btn verify-btn" data-task-id="${taskId}" data-is-promotion="${isPromotion}" ${isCompleted ? 'disabled' : ''}>
-                        ${isCompleted ? 'Completed' : 'Verify'}
+                    <button class="task-btn verify-btn" 
+                            data-task-id="${taskId}" 
+                            data-is-promotion="${isPromotion}">
+                        Verify
                     </button>
                 </div>
             </div>`;
     }
     
-    // ===== এই ফাংশনটি সম্পূর্ণ পরিবর্তন করা হয়েছে =====
     function attachEventListeners() {
         document.querySelectorAll('.join-btn').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -179,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const buttonEl = e.target;
                 const taskId = buttonEl.dataset.taskId;
                 const isPromotion = buttonEl.dataset.isPromotion === 'true';
+                const taskCard = buttonEl.closest('.task-card');
 
                 buttonEl.disabled = true;
                 buttonEl.innerText = 'Verifying...';
@@ -194,8 +203,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     tg.showAlert(result.message);
 
                     if (response.ok && result.success) {
-                        buttonEl.innerText = 'Completed';
-                        // বাটনটি permanently disabled হয়ে থাকবে কারণ এখন Firestore থেকে স্ট্যাটাস চেক করা হবে
+                        // ভেরিফিকেশন সফল হলে কার্ডটি অ্যানিমেশনের সাথে মুছে ফেলা হচ্ছে
+                        taskCard.style.transition = 'opacity 0.5s, transform 0.5s';
+                        taskCard.style.opacity = '0';
+                        taskCard.style.transform = 'scale(0.9)';
+                        setTimeout(() => {
+                            taskCard.remove();
+                            // যদি আর কোনো টাস্ক না থাকে, তাহলে একটি বার্তা দেখানো হচ্ছে
+                            if (!document.querySelector('.task-card')) {
+                                document.getElementById('tasks-container').innerHTML = `<div class="no-tasks"><h3>No new tasks available.</h3></div>`;
+                            }
+                        }, 500);
                     } else {
                         buttonEl.disabled = false;
                         buttonEl.innerText = 'Verify';
