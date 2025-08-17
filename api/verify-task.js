@@ -29,55 +29,68 @@ module.exports = async (req, res) => {
 
         const taskCollectionName = isPromotion ? 'promotions' : 'tasks';
         const taskRef = firestore.collection(taskCollectionName).doc(taskId);
+        const userRef = firestore.collection('users').doc(String(userId));
         
-        // ... বাকি কোড অপরিবর্তিত ...
+        const historyQuery = firestore.collection('userTaskHistory')
+            .where('userId', '==', String(userId))
+            .where('taskId', '==', taskId)
+            .limit(1);
 
         await firestore.runTransaction(async (transaction) => {
             const [taskDoc, userDoc, historySnapshot] = await Promise.all([
-                // ... Promise.all এর ভেতরের কোড অপরিবর্তিত ...
+                transaction.get(taskRef),
+                transaction.get(userRef),
+                transaction.get(historyQuery)
             ]);
-
-            if (!taskDoc.exists) throw new Error('Task not found.');
-            if (!userDoc.exists) throw new Error('User not found.');
+            
+            // ===== নতুন পরিবর্তন: undefined চেক যোগ করা হয়েছে =====
+            if (!taskDoc || !taskDoc.exists) throw new Error('Task not found.');
+            if (!userDoc || !userDoc.exists) throw new Error('User not found.');
             
             const taskData = taskDoc.data();
-            
-            // ... টাস্ক হিস্টোরি চেক করার কোড অপরিবর্তিত ...
+            const userTaskHistoryDoc = historySnapshot.docs[0];
 
-            // ===== টেলিগ্রাম ভেরিফিকেশন সেকশনে পরিবর্তন =====
-            if (taskData.category === 'channel' || taskData.category === 'group') {
-                let chatId;
-                try {
-                    // প্রথমে URL থেকে @username বের করার চেষ্টা করা হচ্ছে
-                    const chatUrl = new URL(taskData.url);
-                    chatId = `@${chatUrl.pathname.split('/')[1]}`;
-                } catch (e) {
-                    throw new Error('Invalid URL format in the task.');
+            if (userTaskHistoryDoc && userTaskHistoryDoc.exists) {
+                if (taskData.taskType === 'daily' && userTaskHistoryDoc.data().lastCompleted === getTodayDate()) {
+                    throw new Error('You have already completed this daily task today.');
                 }
-                
-                try {
-                    const chatMember = await bot.telegram.getChatMember(chatId, userId);
-                    if (!['creator', 'administrator', 'member'].includes(chatMember.status)) {
-                        throw new Error("Verification failed. You haven't joined the channel/group yet.");
-                    }
-                } catch (error) {
-                    // এররটি আরও তথ্যপূর্ণ করার জন্য
-                    if (error.response && error.response.description) {
-                        // "member list is inaccessible" এররটি এখানে ধরা পড়বে
-                        throw new Error(`Telegram API Error: ${error.response.description}. Please check bot permissions.`);
-                    }
-                    throw error; // অন্য কোনো অজানা এররের জন্য
+                if (taskData.taskType === 'general' || isPromotion) {
+                    throw new Error('You have already completed this task.');
                 }
             }
             
-            // ... পয়েন্ট যোগ করা এবং হিস্টোরি সেভ করার কোড অপরিবর্তিত ...
+            if (taskData.category === 'channel' || taskData.category === 'group') {
+                const chatUrl = new URL(taskData.url);
+                const chatId = `@${chatUrl.pathname.split('/')[1]}`;
+                const chatMember = await bot.telegram.getChatMember(chatId, userId);
+                if (!['creator', 'administrator', 'member'].includes(chatMember.status)) {
+                    throw new Error("Verification failed. You haven't joined yet.");
+                }
+            }
+            
+            const pointsToAdd = taskData.points || taskData.pointsPerTask;
+            transaction.update(userRef, { points: admin.firestore.FieldValue.increment(pointsToAdd) });
+            
+            if (userTaskHistoryDoc && userTaskHistoryDoc.exists) {
+                 transaction.update(userTaskHistoryDoc.ref, { lastCompleted: getTodayDate() });
+            } else {
+                const newHistoryRef = firestore.collection('userTaskHistory').doc();
+                transaction.set(newHistoryRef, {
+                    userId: String(userId),
+                    taskId: taskId,
+                    lastCompleted: getTodayDate()
+                });
+            }
+
+            if (isPromotion) {
+                transaction.update(taskRef, { completedCount: admin.firestore.FieldValue.increment(1) });
+            }
         });
 
-        return res.status(200).json({ success: true, message: 'Verification successful! Points have been added.' });
+        return res.status(200).json({ success: true, message: 'Verification successful! Points added.' });
 
     } catch (error) {
         console.error('Verification Error:', error);
-        // ব্যবহারকারীকে দেখানো এরর বার্তাটি আরও উন্নত করা হয়েছে
         return res.status(500).json({ success: false, message: error.message || 'An internal error occurred.' });
     }
 };
